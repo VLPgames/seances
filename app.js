@@ -598,6 +598,14 @@ function viewPrograms() {
   }).join('')}</div>`;
   return h;
 }
+/* Séances existantes portant le même nom (ex. « Push » déjà le lundi) */
+function sameSessions(draft) {
+  const k = nkey(draft.name);
+  if (!k) return [];
+  const type = SALLE_TYPES.find(t => nkey(t) === k);
+  return db.programs.filter(o => o.id !== draft.id && o.cat !== 'repos' && o.days.length &&
+    (nkey(o.name) === k || (type && nkey(o.name).startsWith(nkey(type)))));
+}
 /* Catalogue à afficher dans l'éditeur : groupes utiles d'abord */
 function catalogFor(p) {
   const groups = CATALOG[p.cat] || {};
@@ -612,6 +620,16 @@ function viewEditor() {
     <p class="eyebrow">${cat.e} ${cat.t}</p><h1>${p.cat === 'repos' ? 'Jours de repos' : isNew ? 'Nouvelle séance' : 'Modifier'}</h1></header><div class="card">`;
   if (p.cat === 'salle') {
     h += `<label class="lbl">Type de séance</label><div class="chips tight">${SALLE_TYPES.map(t => `<button class="chip ${p.name.trim() === t ? 'on' : ''}" data-act="pickType" data-v="${t}">${t}</button>`).join('')}</div>`;
+  }
+  if (isNew && p.cat !== 'repos') {
+    for (const o of sameSessions(p)) {
+      const days = o.days.map(i => JOURS[i].toLowerCase()).join(' et ');
+      h += `</div><div class="card reuse">
+        <p>💡 Tu as déjà une séance <strong>${esc(o.name)}</strong> le ${days}.</p>
+        <p class="muted small">La reprendre telle quelle ? Mêmes exercices, mêmes poids, progrès en commun.</p>
+        <button class="btn primary block" data-act="reuseProgram" data-id="${o.id}">Oui, comme ${o.days.length ? JOURS[o.days[0]].toLowerCase() : 'avant'}</button>
+      </div><div class="card">`;
+    }
   }
   if (p.cat !== 'repos') h += `<label class="lbl">Nom</label><input class="txt big" data-draft="name" value="${esc(p.name)}" placeholder="${p.cat === 'salle' ? 'ex. Push' : p.cat === 'maison' ? 'ex. Circuit maison' : 'ex. Footing'}">`;
   h += `<label class="lbl">Jours</label>
@@ -944,6 +962,14 @@ const actions = {
   /* Touche une machine : on ouvre la fiche pour régler poids, séries, reps */
   pickItem(d) { ui.sheet = { mode: 'draft', index: -1, ex: exFromItem(d.item), fromCatalog: true }; render(); },
   toggleMachines() { ui.allMachines = !ui.allMachines; render(); },
+  /* Même séance sur un jour de plus (ex. Push lundi + jeudi) */
+  reuseProgram(d) {
+    const o = db.programs.find(x => x.id === d.id); if (!o) return;
+    const days = ui.draft.days;
+    days.forEach(day => setDay(o, day));
+    saveDb(); ui.draft = null; ui.view = null; ui.tab = 'programs'; render(); window.scrollTo(0, 0);
+    toast(`${o.name} : ${o.days.map(i => JOURS[i].toLowerCase()).join(' et ')}`);
+  },
   noop() {},
   /* Jour vide (ou repos) : les 4 choix ; jour avec séance : on la modifie */
   dayPlan(d) {
@@ -1120,6 +1146,8 @@ document.addEventListener('change', ev => {
   if (t.tagName === 'SELECT' && t.dataset.stat) { ui.statKey = t.value; render(); }
   // Après saisie d'une valeur de séance, rafraîchir l'affichage (ligne résumé)
   if (t.dataset.scope === 'act' && !t.dataset.text) render();
+  // Nom de séance tapé à la main : vérifier s'il existe déjà un autre jour
+  if (t.dataset.draft === 'name' && ui.draft) render();
 });
 
 document.addEventListener('keydown', ev => {
