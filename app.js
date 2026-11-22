@@ -10,6 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
+const APP_VERSION = '4.1';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -982,7 +983,8 @@ function viewProfile() {
     ${listRow({ act: 'deleteProgress', title: 'Supprimer mes progrès', sub: 'Historique, records et graphiques (ta semaine est gardée)', cls: 'danger' })}
     ${listRow({ act: 'wipe', title: 'Tout effacer', sub: 'Progrès + séances programmées + réglages', cls: 'danger' })}
   </div>
-  <p class="muted small center">${db.programs.length} séance(s) programmée(s) · ${db.sessions.length} entraînement(s) enregistré(s)</p>`;
+  <p class="muted small center">${db.programs.length} séance(s) programmée(s) · ${db.sessions.length} entraînement(s) enregistré(s)</p>
+  <p class="muted small center">Version ${APP_VERSION}</p>`;
   return h;
 }
 function viewAuth() {
@@ -1476,4 +1478,15 @@ render();
 if (db.active) keepAwake(true);
 scheduleSync(300);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* */ }
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+  // Nouvelle version installée : recharger une fois pour l'afficher tout de suite (sauf en pleine saisie)
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded || isTyping()) return;
+    reloaded = true; location.reload();
+  });
+}

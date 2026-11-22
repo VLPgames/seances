@@ -1,9 +1,15 @@
 ﻿// Service worker : réseau d'abord (toujours à jour), cache en secours (marche hors ligne à la salle).
-const CACHE = 'seances-v8';
+// cache: 'no-cache' => le navigateur revérifie chaque fichier auprès du serveur (sinon GitHub Pages
+// laisse jusqu'à 10 min d'ancienne version dans le cache HTTP du téléphone).
+const CACHE = 'seances-v9';
 const FILES = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -19,8 +25,9 @@ self.addEventListener('fetch', e => {
   const sameOrigin = url.origin === location.origin;
   const isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !isFont) return; // ex. Supabase : jamais mis en cache
+  const req = sameOrigin ? new Request(e.request, { cache: 'no-cache' }) : e.request;
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then(res => {
         if (res.ok || res.type === 'opaque') { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
         return res;
