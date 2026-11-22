@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.5';
+const APP_VERSION = '5.6';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -1878,12 +1878,19 @@ function toast(msg) {
 buildTabbar();
 render();
 authFromLink();
-/* Écran de chargement : visible ~1,2 s (le temps de l'animation du logo), puis fondu vers l'appli */
+/* Écran de chargement : reste ~2 s à partir du moment où il est VRAIMENT affiché
+   (sur iPhone, l'ouverture depuis l'icône prend du temps avant le premier affichage), puis fondu. */
 (function hideSplash() {
   const sp = document.getElementById('splash'); if (!sp) return;
   const reduced = db.settings.motion === 'reduced' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const wait = Math.max(0, (reduced ? 300 : 1250) - performance.now());
-  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 450); }, wait);
+  const VISIBLE = reduced ? 400 : 2000;
+  const go = () => { sp.classList.add('out'); setTimeout(() => sp.remove(), 450); };
+  const schedule = () => {
+    const shown = window.__splashShown || performance.now();
+    setTimeout(go, Math.max(0, VISIBLE - (performance.now() - shown)));
+  };
+  // Attendre la première image affichée avant de démarrer le compte à rebours
+  requestAnimationFrame(() => requestAnimationFrame(schedule));
 })();
 if (db.active) keepAwake(true);
 scheduleSync(300);

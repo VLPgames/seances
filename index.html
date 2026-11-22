@@ -19,19 +19,21 @@
   <link rel="stylesheet" href="style.css">
   <!-- Écran de chargement : styles en ligne pour qu'il s'affiche dès la première image -->
   <style>
+    html { background: #0c0c0f; } /* fond sombre dès la 1re image (pas de flash blanc au lancement) */
     #splash {
       position: fixed; inset: 0; z-index: 100; background: #0c0c0f; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
       transition: opacity .4s ease, transform .4s ease;
     }
-    #splash svg { width: 112px; height: 112px; border-radius: 26px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); animation: spPop .6s cubic-bezier(.3, 1.5, .5, 1) both; }
-    #splash .sp-bar { transform-box: fill-box; transform-origin: center bottom; animation: spBar .5s cubic-bezier(.3, 1.4, .5, 1) both; }
-    #splash .sp-bar:nth-of-type(1) { animation-delay: .18s; }
-    #splash .sp-bar:nth-of-type(2) { animation-delay: .3s; }
-    #splash .sp-bar:nth-of-type(3) { animation-delay: .42s; }
-    #splash .sp-name { font: 700 1.6rem/1 "Fraunces", Georgia, serif; letter-spacing: .01em; animation: spUp .5s ease .45s both; }
-    #splash .sp-load { width: 44px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .15); overflow: hidden; animation: spUp .4s ease .6s both; }
-    #splash .sp-load i { display: block; width: 40%; height: 100%; border-radius: 99px; background: #fff; animation: spLoad 1s ease-in-out .7s infinite; }
+    /* Animation un peu plus lente, démarrée après un court délai pour qu'on la voie en entier */
+    #splash svg { width: 112px; height: 112px; border-radius: 26px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55); animation: spPop .75s cubic-bezier(.3, 1.5, .5, 1) .15s both; }
+    #splash .sp-bar { transform-box: fill-box; transform-origin: center bottom; animation: spBar .6s cubic-bezier(.3, 1.4, .5, 1) both; }
+    #splash .sp-bar:nth-of-type(1) { animation-delay: .45s; }
+    #splash .sp-bar:nth-of-type(2) { animation-delay: .62s; }
+    #splash .sp-bar:nth-of-type(3) { animation-delay: .79s; }
+    #splash .sp-name { font: 700 1.6rem/1 "Fraunces", Georgia, serif; letter-spacing: .01em; animation: spUp .6s ease .85s both; }
+    #splash .sp-load { width: 44px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .15); overflow: hidden; animation: spUp .4s ease 1.05s both; }
+    #splash .sp-load i { display: block; width: 40%; height: 100%; border-radius: 99px; background: #fff; animation: spLoad 1s ease-in-out 1.1s infinite; }
     #splash.out { opacity: 0; transform: scale(1.06); pointer-events: none; }
     @keyframes spPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
     @keyframes spBar { from { transform: scaleY(0); } to { transform: none; } }
@@ -54,6 +56,8 @@
     <div class="sp-name">Rise</div>
     <div class="sp-load"><i></i></div>
   </div>
+  <!-- Moment où l'écran de chargement est réellement affiché (sert à le garder visible assez longtemps) -->
+  <script>window.__splashShown = 0; requestAnimationFrame(function () { window.__splashShown = performance.now(); });</script>
 
   <main id="main"></main>
 
