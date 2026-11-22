@@ -96,6 +96,7 @@ const fmtPace = p => {
 const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 const stableStr = v => JSON.stringify(v, (k, val) => (val && typeof val === 'object' && !Array.isArray(val))
   ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {}) : val);
+const toTop = () => { const m = document.getElementById('main'); if (m) m.scrollTop = 0; };
 const isTyping = () => { const a = document.activeElement; return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); };
 
 /* Icônes (traits fins) */
@@ -459,7 +460,7 @@ function goTab(tab) {
   const d = TABS.indexOf(tab) - TABS.indexOf(ui.tab);
   ui.tab = tab; ui.view = null;
   if (tab === 'today') ui.day = todayIdx();
-  render(d); window.scrollTo(0, 0);
+  render(d); toTop();
 }
 
 const listRow = ({ act, attrs = '', title, sub = '', right = '', cls = '' }) =>
@@ -897,8 +898,8 @@ function authMsg(t) { const el = $('#authMsg'); if (el) el.textContent = t; }
 const actions = {
   tab(d) { goTab(d.tab); },
   pickDay(d) { ui.day = +d.i; render(); },
-  home() { ui.view = null; ui.tab = 'today'; render(); window.scrollTo(0, 0); },
-  resume() { ui.view = 'session'; render(); keepAwake(true); window.scrollTo(0, 0); },
+  home() { ui.view = null; ui.tab = 'today'; render(); toTop(); },
+  resume() { ui.view = 'session'; render(); keepAwake(true); toTop(); },
 
   /* Séance */
   start(d) {
@@ -907,7 +908,7 @@ const actions = {
     if (db.active && !confirm(`La séance « ${db.active.programName} » est déjà en cours. La remplacer ?`)) return;
     db.active = { id: uid(), programId: p.id, programName: p.name, start: new Date().toISOString(), u: now(), exercises: p.exercises.map(ex => planFor(ex)) };
     ui.fbIdx = null; ui.editIdx = null;
-    saveDb(); ui.view = 'session'; render(); keepAwake(true); window.scrollTo(0, 0);
+    saveDb(); ui.view = 'session'; render(); keepAwake(true); toTop();
   },
   tick(d) {
     const i = +d.i, e = db.active.exercises[i];
@@ -942,7 +943,7 @@ const actions = {
     const sd = new Date(session.start);
     ui.cal = { y: sd.getFullYear(), m: sd.getMonth() }; ui.calSel = `${sd.getFullYear()}-${sd.getMonth()}-${sd.getDate()}`;
     ui.view = 'sessionDetail'; ui.sessionId = session.id; ui.tab = 'history';
-    render(); window.scrollTo(0, 0); toast('Séance enregistrée 💪');
+    render(); toTop(); toast('Séance enregistrée 💪');
   },
   cancelSession() {
     if (!confirm('Abandonner cette séance ? Rien ne sera enregistré.')) return;
@@ -956,7 +957,7 @@ const actions = {
     if (d.v === 'repos') { setRest(day); return; }
     const name = d.v === 'maison' ? 'Circuit maison' : d.v === 'exterieur' ? 'Footing' : '';
     ui.draft = { id: uid(), cat: d.v, name, days: day != null ? [day] : [], exercises: [] };
-    ui.sheet = null; ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
+    ui.sheet = null; ui.view = 'editProgram'; render(); toTop();
   },
   pickType(d) { ui.draft.name = d.v; ui.allMachines = false; render(); },
   /* Touche une machine : on ouvre la fiche pour régler poids, séries, reps */
@@ -967,7 +968,7 @@ const actions = {
     const o = db.programs.find(x => x.id === d.id); if (!o) return;
     const days = ui.draft.days;
     days.forEach(day => setDay(o, day));
-    saveDb(); ui.draft = null; ui.view = null; ui.tab = 'programs'; render(); window.scrollTo(0, 0);
+    saveDb(); ui.draft = null; ui.view = null; ui.tab = 'programs'; render(); toTop();
     toast(`${o.name} : ${o.days.map(i => JOURS[i].toLowerCase()).join(' et ')}`);
   },
   noop() {},
@@ -985,7 +986,7 @@ const actions = {
   },
   editProgram(d) {
     const p = db.programs.find(x => x.id === d.id); if (!p) return;
-    ui.sheet = null; ui.draft = JSON.parse(JSON.stringify(p)); ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
+    ui.sheet = null; ui.draft = JSON.parse(JSON.stringify(p)); ui.view = 'editProgram'; render(); toTop();
   },
   cancelEdit() { ui.draft = null; ui.sheet = null; ui.view = null; render(); },
   toggleDay(d) {
@@ -1047,7 +1048,7 @@ const actions = {
     ui.cal = { y: c.getFullYear(), m: c.getMonth() }; render();
   },
   calPick(d) { ui.calSel = ui.calSel === d.k ? null : d.k; render(); },
-  openSession(d) { ui.sessionId = d.id; ui.view = 'sessionDetail'; render(); window.scrollTo(0, 0); },
+  openSession(d) { ui.sessionId = d.id; ui.view = 'sessionDetail'; render(); toTop(); },
   closeDetail() { ui.view = null; ui.tab = 'history'; render(); },
   deleteSession(d) {
     if (!confirm("Supprimer définitivement cette séance de l'historique ?")) return;
@@ -1061,7 +1062,7 @@ const actions = {
   timerStop() { stopTimer(); },
 
   /* Compte */
-  openAuth() { ui.view = 'auth'; render(); window.scrollTo(0, 0); },
+  openAuth() { ui.view = 'auth'; render(); toTop(); },
   skipAuth() { markWelcomed(); ui.view = null; render(); },
   async signIn() {
     const email = $('#authEmail').value.trim(), pw = $('#authPw').value;

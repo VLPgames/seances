@@ -1,5 +1,5 @@
 ﻿// Service worker : réseau d'abord (toujours à jour), cache en secours (marche hors ligne à la salle).
-const CACHE = 'seances-v5';
+const CACHE = 'seances-v6';
 const FILES = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
