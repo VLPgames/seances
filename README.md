@@ -1,4 +1,4 @@
-# Séances — appli de suivi de muscu / cardio
+# Rise — appli de suivi de muscu / cardio
 
 En ligne : https://vlpgames.github.io/seances/
 

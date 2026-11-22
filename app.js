@@ -1,7 +1,7 @@
 'use strict';
 
 /* =========================================================
-   Séances — V2
+   Rise — appli de suivi d'entraînement
    - Séance du jour directement à l'ouverture
    - Un exercice = une ligne (4 × 8 · 42,5 kg) pré-remplie
    - Après chaque exercice : ressenti + note pour la prochaine fois
@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.4';
+const APP_VERSION = '5.5';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -175,6 +175,11 @@ const ICONS = {
   badge: '<path d="M12 3l2.2 1.6 2.7-.1.8 2.6 2.2 1.6-.9 2.6.9 2.6-2.2 1.6-.8 2.6-2.7-.1L12 21l-2.2-1.6-2.7.1-.8-2.6-2.2-1.6.9-2.6-.9-2.6 2.2-1.6.8-2.6 2.7.1z"/><path d="m9 12 2 2 4-4"/>',
   cloud: '<path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z"/>',
 };
+/* Logo Rise : 3 barres montantes (même dessin que l'icône de l'appli) */
+const logoMark = () => `<svg viewBox="137 125 238 262" width="38" height="38" aria-hidden="true">
+  <rect x="137" y="269" width="62" height="118" rx="31" fill="currentColor" fill-opacity=".55"/>
+  <rect x="225" y="199" width="62" height="188" rx="31" fill="currentColor" fill-opacity=".8"/>
+  <rect x="313" y="125" width="62" height="262" rx="31" fill="currentColor"/></svg>`;
 const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 
 /* ---------- Données locales ---------- */
@@ -1169,7 +1174,7 @@ function viewProfile() {
     ${listRow({ act: 'openPage', attrs: 'data-p="data"', title: '💾 Mes données', sub: 'Sauvegarde, suppression' })}
   </div>
   ${auth ? `<div class="list">${listRow({ act: 'logout', title: 'Se déconnecter', cls: 'danger' })}</div>` : ''}
-  <p class="muted small center">Séances · version ${APP_VERSION}</p>`;
+  <p class="muted small center">Rise · version ${APP_VERSION}</p>`;
   return h;
 }
 function viewPage() {
@@ -1249,8 +1254,8 @@ function viewAuth() {
       <button class="btn primary block" data-act="authSubmit">Enregistrer</button>`;
   }
   return `<div class="auth">
-    <div class="logo">${ic('dumbbell')}</div>
-    <h1 class="center">Séances</h1>
+    <div class="logo">${logoMark()}</div>
+    <h1 class="center">Rise</h1>
     <p class="muted center">Ton suivi d'entraînement, sur tous tes appareils.</p>
     <div class="card auth-card">${form}</div>
     ${m === 'reset' ? '' : `<button class="btn text block" data-act="skipAuth">${first ? 'Continuer sans compte' : '‹ Retour'}</button>`}
@@ -1303,7 +1308,7 @@ function viewConfirmed() {
     <p class="center">Merci d'avoir confirmé ton adresse${ui.confirmedEmail ? ` <strong>${esc(ui.confirmedEmail)}</strong>` : ''}.</p>
     <div class="card">
       <p><strong>📱 Tu as installé l'appli sur ton écran d'accueil ?</strong></p>
-      <p class="muted">Ferme cette page et retourne dans l'appli <strong>Séances</strong>, puis connecte-toi avec ton email et ton mot de passe (Profil › Se connecter).</p>
+      <p class="muted">Ferme cette page et retourne dans l'appli <strong>Rise</strong>, puis connecte-toi avec ton email et ton mot de passe (Profil › Se connecter).</p>
       <p style="margin-top:12px"><strong>💻 Tu es sur ton ordinateur ?</strong></p>
       <p class="muted">Tu es déjà connecté ici : tu peux continuer directement.</p>
     </div>
@@ -1658,7 +1663,7 @@ const actions = {
     const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `seances-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `rise-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },

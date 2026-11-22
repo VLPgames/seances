@@ -1,6 +1,6 @@
 {
-  "name": "Séances",
-  "short_name": "Séances",
+  "name": "Rise",
+  "short_name": "Rise",
   "description": "Ta séance du jour et ce que tu as fait la dernière fois.",
   "lang": "fr",
   "start_url": "./",
