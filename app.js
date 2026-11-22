@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -320,7 +320,9 @@ function setAuth(j) {
 }
 async function apiSignIn(email, password) { setAuth(await authReq('token?grant_type=password', { email, password })); }
 async function apiSignUp(email, password) {
-  const j = await authReq('signup', { email, password });
+  // Adresse de retour après le clic dans l'email de confirmation : l'appli elle-même (et pas la racine du site)
+  const back = location.origin + location.pathname;
+  const j = await authReq('signup?redirect_to=' + encodeURIComponent(back), { email, password });
   if (j.access_token) { setAuth(j); return true; }
   return false; // confirmation par email demandée
 }
@@ -520,7 +522,8 @@ function applyTheme() {
 function render(dir) {
   applyTheme();
   let html;
-  if (ui.view === 'onboard' && ui.ob) html = viewOnboard();
+  if (ui.view === 'confirmed') html = viewConfirmed();
+  else if (ui.view === 'onboard' && ui.ob) html = viewOnboard();
   else if (ui.view === 'gym' && hasGym()) html = viewGym();
   else if (ui.view === 'auth' && cloudOn()) html = viewAuth();
   else if (ui.view === 'session' && db.active) html = viewSession();
@@ -1243,6 +1246,21 @@ function setDay(p, day) {
 }
 function newEx() { return { id: uid(), name: '', type: 'muscu', unit: 'reps', sets: 3, reps: 10, kg: null, km: null, min: null, rest: null }; }
 function cleanEntry(e) { const { hint, lastNote, done, ...rest } = e; return rest; }
+/* Écran affiché après le clic sur le lien de confirmation de l'email */
+function viewConfirmed() {
+  return `<div class="auth confirmed">
+    <div class="logo">${ic('check')}</div>
+    <h1 class="center">Compte confirmé !</h1>
+    <p class="center">Merci d'avoir confirmé ton adresse${ui.confirmedEmail ? ` <strong>${esc(ui.confirmedEmail)}</strong>` : ''}.</p>
+    <div class="card">
+      <p><strong>📱 Tu as installé l'appli sur ton écran d'accueil ?</strong></p>
+      <p class="muted">Ferme cette page et retourne dans l'appli <strong>Séances</strong>, puis connecte-toi avec ton email et ton mot de passe (Profil › Se connecter).</p>
+      <p style="margin-top:12px"><strong>💻 Tu es sur ton ordinateur ?</strong></p>
+      <p class="muted">Tu es déjà connecté ici : tu peux continuer directement.</p>
+    </div>
+    <button class="btn primary block" data-act="confirmedGo">Continuer ici</button>
+  </div>`;
+}
 /* Après l'écran de connexion : questionnaire pour un nouvel utilisateur, sinon l'accueil */
 function afterAuthScreen() {
   if (!db.profile && !db.programs.length && !db.sessions.length) { startOnboarding(); return; }
@@ -1265,8 +1283,9 @@ async function authFromLink() {
     if (!r.ok) throw new Error();
     const user = await r.json();
     setAuth({ access_token: at, refresh_token: rt, expires_in: +(h.get('expires_in') || 3600), user });
-    markWelcomed(); toast('Email confirmé, tu es connecté ✅');
-    await sync(); afterAuthScreen();
+    markWelcomed();
+    ui.confirmedEmail = user.email; ui.view = 'confirmed'; render(); toTop();
+    sync();
   } catch (e) { toast('Connexion impossible depuis ce lien : connecte-toi avec ton email'); }
 }
 function authMsg(t) { const el = $('#authMsg'); if (el) el.textContent = t; }
@@ -1444,6 +1463,7 @@ const actions = {
   /* Compte */
   openAuth() { ui.view = 'auth'; render(); toTop(); },
   skipAuth() { markWelcomed(); afterAuthScreen(); },
+  confirmedGo() { ui.confirmedEmail = null; afterAuthScreen(); },
   async signIn() {
     const email = $('#authEmail').value.trim(), pw = $('#authPw').value;
     if (!email || !pw) { authMsg('Renseigne ton email et ton mot de passe'); return; }
