@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.3';
+const APP_VERSION = '5.4';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -1873,6 +1873,13 @@ function toast(msg) {
 buildTabbar();
 render();
 authFromLink();
+/* Écran de chargement : visible ~1,2 s (le temps de l'animation du logo), puis fondu vers l'appli */
+(function hideSplash() {
+  const sp = document.getElementById('splash'); if (!sp) return;
+  const reduced = db.settings.motion === 'reduced' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const wait = Math.max(0, (reduced ? 300 : 1250) - performance.now());
+  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 450); }, wait);
+})();
 if (db.active) keepAwake(true);
 scheduleSync(300);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* */ }

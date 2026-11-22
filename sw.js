@@ -1,8 +1,8 @@
 ﻿// Service worker : réseau d'abord (toujours à jour), cache en secours (marche hors ligne à la salle).
 // cache: 'no-cache' => le navigateur revérifie chaque fichier auprès du serveur (sinon GitHub Pages
 // laisse jusqu'à 10 min d'ancienne version dans le cache HTTP du téléphone).
-const CACHE = 'seances-v13';
-const FILES = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'seances-v14';
+const FILES = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
