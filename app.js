@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.6';
+const APP_VERSION = '5.7';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -646,15 +646,16 @@ function streakWeeks() {
 function heroCard() {
   const g = weeklyGoal(), n = weekCount(), pct = Math.min(1, n / g);
   const R = 52, C = 2 * Math.PI * R, st = streakWeeks(), left = Math.max(0, g - n);
-  return `<div class="card hero">
+  return `<div class="card hero"><div class="ring-wrap">
     <div class="ring">
       <svg viewBox="0 0 128 128" aria-hidden="true">
         <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--g1)"/><stop offset=".55" style="stop-color:var(--g2)"/><stop offset="1" style="stop-color:var(--g3)"/></linearGradient></defs>
         <circle class="r-bg" cx="64" cy="64" r="${R}"/>
         <circle class="r-fg" cx="64" cy="64" r="${R}" style="--c:${C.toFixed(1)}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}" ${n ? '' : 'opacity="0"'}/>
       </svg>
-      <div class="ring-c"><strong>${n}<small>/${g}</small></strong><span>cette semaine</span></div>
+      <div class="ring-c"><strong>${n}<small>/${g}</small></strong><span>séance${g > 1 ? 's' : ''}</span></div>
     </div>
+    <p class="ring-cap">Cette semaine</p></div>
     <div class="streak">
       <strong><span class="flame">🔥</span> ${st}</strong>
       <p>${st ? `semaine${st > 1 ? 's' : ''} d'affilée` : 'Lance ta série !'}</p>
@@ -1880,18 +1881,33 @@ render();
 authFromLink();
 /* Écran de chargement : reste ~2 s à partir du moment où il est VRAIMENT affiché
    (sur iPhone, l'ouverture depuis l'icône prend du temps avant le premier affichage), puis fondu. */
-(function hideSplash() {
-  const sp = document.getElementById('splash'); if (!sp) return;
+const splashTpl = (() => { const sp = document.getElementById('splash'); return sp ? sp.cloneNode(true) : null; })();
+function hideSplash(sp, shownAt) {
+  if (!sp) return;
   const reduced = db.settings.motion === 'reduced' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const VISIBLE = reduced ? 400 : 2000;
   const go = () => { sp.classList.add('out'); setTimeout(() => sp.remove(), 450); };
-  const schedule = () => {
-    const shown = window.__splashShown || performance.now();
-    setTimeout(go, Math.max(0, VISIBLE - (performance.now() - shown)));
-  };
   // Attendre la première image affichée avant de démarrer le compte à rebours
-  requestAnimationFrame(() => requestAnimationFrame(schedule));
-})();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const shown = shownAt || window.__splashShown || performance.now();
+    setTimeout(go, Math.max(0, VISIBLE - (performance.now() - shown)));
+  }));
+}
+hideSplash(document.getElementById('splash'));
+/* iOS garde l'appli en mémoire : toucher l'icône la « réveille » sans la recharger.
+   Si on revient après plus d'une minute (et pas en pleine séance), on rejoue l'écran de chargement. */
+let hiddenAt = 0;
+function replaySplash() {
+  if (!splashTpl || document.getElementById('splash') || db.active || ui.sheet || isTyping()) return;
+  const sp = splashTpl.cloneNode(true);
+  document.body.prepend(sp);
+  hideSplash(sp, performance.now());
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { hiddenAt = now(); return; }
+  if (hiddenAt && now() - hiddenAt > 60000) replaySplash();
+});
+window.addEventListener('pageshow', e => { if (e.persisted) replaySplash(); });
 if (db.active) keepAwake(true);
 scheduleSync(300);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* */ }
