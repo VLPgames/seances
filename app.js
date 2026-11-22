@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -1243,6 +1243,32 @@ function setDay(p, day) {
 }
 function newEx() { return { id: uid(), name: '', type: 'muscu', unit: 'reps', sets: 3, reps: 10, kg: null, km: null, min: null, rest: null }; }
 function cleanEntry(e) { const { hint, lastNote, done, ...rest } = e; return rest; }
+/* Après l'écran de connexion : questionnaire pour un nouvel utilisateur, sinon l'accueil */
+function afterAuthScreen() {
+  if (!db.profile && !db.programs.length && !db.sessions.length) { startOnboarding(); return; }
+  ui.view = null; ui.tab = auth ? 'profile' : 'today'; render(); toTop();
+}
+/* Retour depuis le lien de confirmation email : Supabase renvoie les jetons dans l'adresse (#access_token=…) */
+async function authFromLink() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!cloudOn()) return;
+  if (h.get('error_description')) {
+    history.replaceState(null, '', location.pathname);
+    toast('Lien expiré ou déjà utilisé : connecte-toi avec ton email et ton mot de passe');
+    return;
+  }
+  const at = h.get('access_token'), rt = h.get('refresh_token');
+  if (!at || !rt) return;
+  history.replaceState(null, '', location.pathname); // retirer les jetons de l'adresse
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/auth/v1/user`, { headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + at } });
+    if (!r.ok) throw new Error();
+    const user = await r.json();
+    setAuth({ access_token: at, refresh_token: rt, expires_in: +(h.get('expires_in') || 3600), user });
+    markWelcomed(); toast('Email confirmé, tu es connecté ✅');
+    await sync(); afterAuthScreen();
+  } catch (e) { toast('Connexion impossible depuis ce lien : connecte-toi avec ton email'); }
+}
 function authMsg(t) { const el = $('#authMsg'); if (el) el.textContent = t; }
 
 const actions = {
@@ -1417,14 +1443,14 @@ const actions = {
 
   /* Compte */
   openAuth() { ui.view = 'auth'; render(); toTop(); },
-  skipAuth() { markWelcomed(); ui.view = null; render(); },
+  skipAuth() { markWelcomed(); afterAuthScreen(); },
   async signIn() {
     const email = $('#authEmail').value.trim(), pw = $('#authPw').value;
     if (!email || !pw) { authMsg('Renseigne ton email et ton mot de passe'); return; }
     authMsg('Connexion…');
     try { await apiSignIn(email, pw); }
     catch (e) { authMsg(e.message); return; }
-    markWelcomed(); ui.view = null; ui.tab = 'profile'; render(); toast('Connecté ✅'); sync();
+    markWelcomed(); toast('Connecté ✅'); await sync(); afterAuthScreen();
   },
   async signUp() {
     const email = $('#authEmail').value.trim(), pw = $('#authPw').value;
@@ -1435,7 +1461,7 @@ const actions = {
     try { logged = await apiSignUp(email, pw); }
     catch (e) { authMsg(e.message); return; }
     if (!logged) { authMsg('Compte créé ! Clique sur le lien reçu par email, puis reviens ici et connecte-toi.'); return; }
-    markWelcomed(); ui.view = null; ui.tab = 'profile'; render(); toast('Compte créé ✅'); sync();
+    markWelcomed(); toast('Compte créé ✅'); await sync(); afterAuthScreen();
   },
   syncNow() { sync(); },
   setTheme(d) { db.settings.theme = d.v; db.settingsU = now(); saveDb(); render(); },
@@ -1733,6 +1759,7 @@ function toast(msg) {
 /* ---------- Démarrage ---------- */
 buildTabbar();
 render();
+authFromLink();
 if (db.active) keepAwake(true);
 scheduleSync(300);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* */ }

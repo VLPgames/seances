@@ -9,6 +9,11 @@ create table if not exists public.user_data (
 
 alter table public.user_data enable row level security;
 
+-- Accès via l'API pour les utilisateurs connectés uniquement (les règles RLS ci-dessous filtrent les lignes).
+grant usage on schema public to authenticated;
+grant select, insert, update on public.user_data to authenticated;
+revoke all on public.user_data from anon;
+
 -- Chacun ne peut lire / écrire que SA ligne.
 drop policy if exists "lecture perso" on public.user_data;
 drop policy if exists "ajout perso" on public.user_data;
