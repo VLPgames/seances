@@ -1,32 +1,34 @@
 # Séances — appli de suivi de muscu / cardio
 
+En ligne : https://vlpgames.github.io/seances/
+
 **Problème réglé** : plus besoin de chercher sa séance dans ses notes ni de se demander combien on a soulevé la dernière fois.
 
-## V1
-- **Aujourd'hui** : la séance prévue pour le jour s'affiche directement (bande Lun→Dim pour voir les autres jours), avec, pour chaque exercice, ce qui a été fait la dernière fois.
-- **Séance en cours** : valeurs pré-remplies avec la dernière séance, case ✓ par série, minuteur de repos automatique (vibration + bip), suggestion « +2,5 kg » quand l'objectif a été atteint, écran maintenu allumé.
-- **Programmes** : séances = exercices (muscu, poids du corps en reps ou secondes, cardio) + jours de la semaine.
-- **Historique** : séances terminées, nouveaux records 🏆.
-- **Progrès** : records, 1RM estimé, graphique par exercice.
-- **Réglages** : repos par défaut, export / import de sauvegarde.
+## Fonctionnement (V2)
+- **Accueil** : la séance prévue pour le jour, déjà remplie (« 4 × 8 · 42,5 kg ») avec ce qui a été fait la dernière fois, objectif de la semaine.
+- **Séance en cours** : une ligne par exercice, un bouton ✓, minuteur de repos automatique. Après chaque exercice : « Comment c'était ? » (trop dur / parfait / trop facile) + note pour la prochaine fois. « Trop facile » → +2,5 kg (ou +1 rep) proposé automatiquement la fois suivante.
+- **Séances** : nom, jours, exercices (muscu, poids du corps en reps ou secondes, cardio).
+- **Historique**, **Progrès** (records, graphique par exercice), **Profil** (compte, réglages, sauvegarde).
+- Barre d'onglets en verre, glissable ; swipe gauche/droite sur le contenu pour changer d'onglet.
 
-Les données restent sur le téléphone (localStorage). Penser à exporter régulièrement.
+## Comptes et synchro
+- Hors ligne d'abord : tout est enregistré sur l'appareil, puis synchronisé avec le compte dès qu'il y a du réseau (fusion par élément, la modification la plus récente gagne).
+- Serveur : Supabase (gratuit). Configuration dans `config.js` (URL + clé publique), table et règles de sécurité dans `supabase/schema.sql`.
+- Sans configuration, l'appli fonctionne en mode local.
 
 ## Technique
-HTML + CSS + JavaScript sans framework, appli web installable (manifest + service worker, fonctionne hors ligne).
+HTML + CSS + JavaScript sans framework, appli web installable (manifest + service worker).
 
 | Fichier | Rôle |
 |---|---|
 | `index.html` | Squelette de la page |
-| `style.css` | Style (simple, à retravailler) |
-| `app.js` | Toute la logique (données, écrans, actions) |
+| `style.css` | Design |
+| `app.js` | Logique (données, synchro, écrans, actions) |
+| `config.js` | Paramètres Supabase |
+| `supabase/schema.sql` | Table `user_data` + règles RLS |
 | `sw.js` | Cache hors ligne |
-| `manifest.webmanifest` | Installation sur l'écran d'accueil |
 | `tools/serve.ps1` | Serveur local de test (`http://localhost:8080`) |
 
-Tester sur le PC :
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\serve.ps1
 ```
-
-Pour l'installer sur un téléphone, il faut l'héberger en HTTPS (ex. GitHub Pages, gratuit).
