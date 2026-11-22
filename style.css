@@ -8,12 +8,12 @@
   --grad-soft: linear-gradient(135deg, color-mix(in srgb, var(--g1) 14%, transparent), color-mix(in srgb, var(--g2) 12%, transparent) 60%, color-mix(in srgb, var(--g3) 12%, transparent));
   --glow: 0 12px 32px color-mix(in srgb, var(--g2) 30%, transparent);
 
-  --bg: #f7f3fb;
-  --surface: rgba(255, 255, 255, .86);
-  --surface-2: #f1eaf8;
-  --line: #e7def1;
-  --text: #1b1426;
-  --muted: #6f6582;
+  --bg: #f4f4f6;
+  --surface: rgba(255, 255, 255, .9);
+  --surface-2: #ececf0;
+  --line: #e3e3e8;
+  --text: #17171c;
+  --muted: #6b6b76;
   --accent: var(--acc-l);
   --accent-soft: color-mix(in srgb, var(--acc-l) 10%, transparent);
   --on-accent: var(--on-grad);
@@ -21,9 +21,9 @@
   --danger: #e11d48;
   --warm: #fff1e4;
   --glass: rgba(255, 255, 255, .58);
-  --glass-line: rgba(80, 40, 120, .12);
+  --glass-line: rgba(20, 20, 30, .1);
   --glass-hi: rgba(255, 255, 255, .95);
-  --shadow: 0 12px 32px rgba(60, 20, 90, .16);
+  --shadow: 0 12px 32px rgba(20, 20, 30, .14);
   --blob: .32;
   --radius: 18px;
   --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -33,16 +33,16 @@
 /* Sombre : automatique (réglage du téléphone) sauf si « clair » est forcé, ou forcé dans le Profil */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d0a14; --surface: rgba(30, 24, 43, .84); --surface-2: #231b31; --line: rgba(255, 255, 255, .09);
-    --text: #f6f2fb; --muted: #a99fbb; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
+    --bg: #0c0c0f; --surface: rgba(28, 28, 33, .86); --surface-2: #222228; --line: rgba(255, 255, 255, .09);
+    --text: #f4f4f6; --muted: #a1a1ab; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
     --ok: #34d399; --danger: #fb7185; --warm: rgba(249, 115, 22, .14);
     --glass: rgba(28, 22, 40, .55); --glass-line: rgba(255, 255, 255, .13); --glass-hi: rgba(255, 255, 255, .2);
     --shadow: 0 14px 40px rgba(0, 0, 0, .55); --blob: .45; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d0a14; --surface: rgba(30, 24, 43, .84); --surface-2: #231b31; --line: rgba(255, 255, 255, .09);
-  --text: #f6f2fb; --muted: #a99fbb; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
+  --bg: #0c0c0f; --surface: rgba(28, 28, 33, .86); --surface-2: #222228; --line: rgba(255, 255, 255, .09);
+  --text: #f4f4f6; --muted: #a1a1ab; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
   --ok: #34d399; --danger: #fb7185; --warm: rgba(249, 115, 22, .14);
   --glass: rgba(28, 22, 40, .55); --glass-line: rgba(255, 255, 255, .13); --glass-hi: rgba(255, 255, 255, .2);
   --shadow: 0 14px 40px rgba(0, 0, 0, .55); --blob: .45; color-scheme: dark;
@@ -389,7 +389,7 @@ h1 {
   background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
   padding-bottom: 2px;
 }
-.card, .list, .kpi { box-shadow: 0 1px 0 var(--glass-hi) inset, 0 6px 18px rgba(40, 10, 60, .06); }
+.card, .list, .kpi { box-shadow: 0 1px 0 var(--glass-hi) inset, 0 4px 14px rgba(20, 20, 30, .05); }
 .btn.primary { background: var(--grad); border: 0; box-shadow: var(--glow); }
 .btn.primary:active, .tick:active, .chip:active, .lrow:active, .week button:active { transform: scale(.97); }
 .btn, .chip, .lrow, .week button, .tick { transition: transform .15s ease, background .2s, box-shadow .2s; }
@@ -549,6 +549,30 @@ main > *:nth-child(n+6) { animation-delay: .2s; }
 .ob-invite .ic { color: var(--muted); }
 .grid2 > div .lbl { margin-top: 14px; }
 .chip.absent { opacity: .55; border-style: dashed; }
+
+/* Connexion */
+.auth-card { display: grid; gap: 12px; padding: 18px; }
+.auth-card .seg { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 4px; }
+.auth-card .seg button { padding: 10px 8px; font-size: .9rem; }
+.auth-card .txt { min-height: 50px; }
+.auth-t { font-weight: 700; font-size: 1.1rem; margin: 0; }
+.pw { position: relative; }
+.pw .txt { padding-right: 52px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; background: none; font-size: 1.1rem; cursor: pointer; border-radius: 10px; }
+.forgot { justify-self: end; padding: 0; min-height: 32px; font-size: .88rem; }
+.auth-card .msg:empty { display: none; }
+.auth-card .msg { margin: 0; }
+.auth-card .btn.block { margin-top: 2px; }
+.auth-card .link { justify-self: center; }
+.auth-card .link.forgot { justify-self: end; color: var(--muted); font-weight: 600; }
+
+/* Rangement : listes groupées, onglets, barre fine */
+.list + .list { margin-top: 18px; }
+.tabs-seg .seg { display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabs-seg .seg button { padding: 9px 6px; }
+.bar.slim { height: 6px; margin-top: 8px; }
+.top .row-between { margin-top: 6px; }
+.acc .acc-s + .acc-s { font-size: .78rem; }
 
 /* Séries par muscle */
 .mbars { display: grid; gap: 8px; margin: 12px 0 6px; }

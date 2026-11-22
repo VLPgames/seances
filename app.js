@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.3';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -517,7 +517,7 @@ function applyTheme() {
   if (db.settings.motion === 'reduced') root.setAttribute('data-motion', 'reduced'); else root.removeAttribute('data-motion');
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#0d0a14' : '#f7f3fb');
+  if (meta) meta.setAttribute('content', dark ? '#0c0c0f' : '#f4f4f6');
 }
 function render(dir) {
   applyTheme();
@@ -525,6 +525,7 @@ function render(dir) {
   if (ui.view === 'confirmed') html = viewConfirmed();
   else if (ui.view === 'onboard' && ui.ob) html = viewOnboard();
   else if (ui.view === 'gym' && hasGym()) html = viewGym();
+  else if (ui.view === 'page') html = viewPage();
   else if (ui.view === 'auth' && cloudOn()) html = viewAuth();
   else if (ui.view === 'session' && db.active) html = viewSession();
   else if (ui.view === 'editProgram' && ui.draft) html = viewEditor();
@@ -534,7 +535,7 @@ function render(dir) {
   const main = $('#main');
   main.innerHTML = html;
   if (dir) { main.classList.remove('in-left', 'in-right'); void main.offsetWidth; main.classList.add(dir > 0 ? 'in-right' : 'in-left'); }
-  const showBar = !ui.view || ui.view === 'sessionDetail';
+  const showBar = !ui.view || ['sessionDetail', 'page', 'gym'].includes(ui.view);
   $('#tabbar').hidden = !showBar;
   document.body.classList.toggle('with-bar', showBar);
   document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
@@ -563,7 +564,7 @@ function viewToday() {
   const t = todayIdx(), d = ui.day;
   const pn = profile().name;
   let h = `<header class="top"><p class="eyebrow">${pn ? 'Salut ' + esc(pn) + ' 👋 · ' : ''}${pn ? new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : cap(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Aujourd'hui</h1></header>`;
-  if (!profile().done) {
+  if (!profile().done && !profile().skipped) {
     h += `<button class="card ob-invite" data-act="openOnboard">
       <span class="ob-e">👋</span><span class="ob-txt"><strong>Personnalise ton appli</strong><span>Objectif, niveau, ta salle… 1 minute</span></span>${ic('chevron')}</button>`;
   }
@@ -672,8 +673,8 @@ function todayCard(p) {
   return `<div class="card poster">
     <div class="row-between"><p class="p-eyebrow">${cat.e} ${cat.t}</p>${doneToday ? '<span class="pill ok">✓ Faite</span>' : ''}</div>
     <h3>${esc(p.name)}</h3>
-    <p class="muted small">${n} exercice${n > 1 ? 's' : ''} · ~${fmtDuree(estMinutes(p))} · ${last ? 'dernière fois ' + fmtDate(last.start) : 'première fois'}</p>
-    ${musclesOf(p).length ? `<div class="tags">${musclesOf(p).map(g => `<span>${esc(g)}</span>`).join('')}</div>` : ''}
+    <p class="muted small">${n} exercice${n > 1 ? 's' : ''} · ~${fmtDuree(estMinutes(p))}</p>
+    ${musclesOf(p).length ? `<div class="tags">${musclesOf(p).slice(0, 3).map(g => `<span>${esc(g)}</span>`).join('')}</div>` : ''}
     <ul class="plan">${p.exercises.map(ex => { const e = planFor(ex); return `<li><span>${esc(e.name)}</span><span class="plan-v">${planText(e)}</span></li>`; }).join('')}</ul>
     <button class="btn primary block" data-act="start" data-id="${p.id}">${doneToday ? 'Refaire' : 'Démarrer'}</button>
   </div>`;
@@ -683,9 +684,8 @@ function todayCard(p) {
 function viewSession() {
   const a = db.active, n = a.exercises.filter(e => e.done).length, tot = a.exercises.length;
   let h = `<header class="top"><button class="back" data-act="home">‹ Accueil</button><h1>${esc(a.programName)}</h1>
-    <p class="muted small">⏱ <span class="chrono" id="chrono">${chronoText()}</span> · commencée à ${fmtTime(a.start)}</p></header>
-    <div class="card goal"><div class="row-between"><span class="goal-t">Progression</span><span class="muted">${n} sur ${tot}</span></div>
-    <div class="bar"><span style="width:${tot ? n / tot * 100 : 0}%"></span></div></div>`;
+    <p class="muted small row-between"><span>⏱ <span class="chrono" id="chrono">${chronoText()}</span></span><span>${n} / ${tot} exercice${tot > 1 ? 's' : ''}</span></p>
+    <div class="bar slim"><span style="width:${tot ? n / tot * 100 : 0}%"></span></div></header>`;
   h += a.exercises.map(exCard).join('');
   h += `<button class="btn ghost block" data-act="addExSession">+ Ajouter un exercice</button>`;
   h += `<div class="footer-actions"><button class="btn text danger" data-act="cancelSession">Abandonner</button><button class="btn primary" data-act="finishSession">Terminer la séance</button></div>`;
@@ -1020,17 +1020,22 @@ function viewSessionDetail() {
 
 /* ----- Progrès ----- */
 function viewStats() {
-  let h = `<header class="top"><h1>Progrès</h1></header>`;
-  const n = new Date();
-  const month = db.sessions.filter(s => { const d = new Date(s.start); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); }).length;
-  const week = weekCount();
-  h += `<div class="kpis"><div class="kpi"><strong>${week}</strong><span>séance${week > 1 ? 's' : ''} cette semaine</span></div>
-    <div class="kpi"><strong>${month}</strong><span>séance${month > 1 ? 's' : ''} ce mois-ci</span></div></div>`;
-  if (db.sessions.length) h += volumeCard() + musclesCard();
-  h += bodyCard();
+  const tab = ui.statTab || 'apercu';
+  let h = `<header class="top"><h1>Progrès</h1></header>
+    <div class="tabs-seg">${segBtns('statTab', tab, [['apercu', 'Aperçu'], ['exos', 'Exercices'], ['corps', 'Corps']])}</div>`;
+  const empty = `<div class="card empty"><div class="empty-ic">${ic('chart')}</div><p class="muted">Termine ta première séance pour voir ta progression ici.</p></div>`;
+  if (tab === 'corps') return h + bodyCard();
+  if (tab === 'apercu') {
+    const n = new Date();
+    const month = db.sessions.filter(s => { const d = new Date(s.start); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); }).length;
+    const week = weekCount();
+    h += `<div class="kpis"><div class="kpi"><strong>${week}</strong><span>séance${week > 1 ? 's' : ''} cette semaine</span></div>
+      <div class="kpi"><strong>${month}</strong><span>séance${month > 1 ? 's' : ''} ce mois-ci</span></div></div>`;
+    return h + (db.sessions.length ? volumeCard() + musclesCard() : empty);
+  }
   const labels = new Map();
   for (const s of db.sessions) for (const e of s.exercises) labels.set(nkey(e.name), e.name);
-  if (!labels.size) return h + `<div class="card"><p class="muted">Termine une séance pour voir ta progression par exercice.</p></div>`;
+  if (!labels.size) return h + empty;
   h += recordsCard(labels);
   const keys = [...labels.keys()].sort((a, b) => labels.get(a).localeCompare(labels.get(b), 'fr'));
   if (!ui.statKey || !labels.has(ui.statKey)) ui.statKey = keys[0];
@@ -1137,74 +1142,118 @@ function miniStepper(f, step, unit = '') {
     <span>${fmtNum(db.settings[f])}${unit ? ' ' + unit : ''}</span>
     <button data-act="step" data-scope="set" data-i="0" data-f="${f}" data-d="${step}" aria-label="Plus">+</button></div>`;
 }
+/* Profil : un menu court, le détail est dans des sous-pages (comme les Réglages du téléphone) */
+const segBtns = (act, cur, opts, extra = '') => `<div class="seg" role="group">${opts.map(([k, v]) => `<button class="${cur === k ? 'on' : ''}" data-act="${act}" data-v="${k}" ${extra}>${v}</button>`).join('')}</div>`;
 function viewProfile() {
+  const pr = profile();
   let h = `<header class="top"><h1>Profil</h1></header>`;
   if (auth) {
-    h += `<div class="card acc"><div class="avatar">${esc(auth.user.email.charAt(0).toUpperCase())}</div>
-      <div class="acc-main"><div class="acc-t">${esc(auth.user.email)}</div><div class="acc-s" id="syncText">${syncText()}</div></div>
-      <button class="icon-btn" data-act="syncNow" aria-label="Synchroniser">${ic('cloud')}</button></div>`;
+    const nm = pr.name || auth.user.email.split('@')[0];
+    h += `<div class="card acc"><div class="avatar">${esc(nm.charAt(0).toUpperCase())}</div>
+      <div class="acc-main"><div class="acc-t">${esc(nm)}</div><div class="acc-s">${esc(auth.user.email)}</div><div class="acc-s" id="syncText">${syncText()}</div></div>
+      <button class="icon-btn" data-act="syncNow" aria-label="Synchroniser maintenant">${ic('cloud')}</button></div>`;
   } else if (cloudOn()) {
-    h += `<div class="card acc"><div class="avatar">?</div><div class="acc-main"><div class="acc-t">Pas connecté</div>
-      <div class="acc-s">Tes données sont seulement sur cet appareil</div></div></div>
-      <button class="btn primary block" data-act="openAuth">Se connecter ou créer un compte</button>`;
-  } else {
-    h += `<div class="card acc"><div class="avatar">${ic('user')}</div><div class="acc-main"><div class="acc-t">Mode local</div>
-      <div class="acc-s">Les comptes arrivent bientôt : tes données restent sur cet appareil.</div></div></div>`;
+    h += `<div class="card acc"><div class="avatar">${ic('user')}</div><div class="acc-main"><div class="acc-t">${pr.name ? esc(pr.name) : 'Pas connecté'}</div>
+      <div class="acc-s">Connecte-toi pour retrouver ton suivi sur tous tes appareils</div></div></div>
+      <button class="btn primary block" data-act="openAuth">Se connecter</button>`;
   }
-  h += goalCard();
-  const pr = profile();
-  const age = pr.birthYear ? new Date().getFullYear() - pr.birthYear : null;
-  h += `<h2>Mon profil sportif</h2><div class="list">
-    ${listRow({ act: 'openOnboard', title: pr.done ? `${GOALS[pr.goal]?.e || '🎯'} ${GOALS[pr.goal]?.t || 'Objectif non renseigné'}` : '👋 Compléter mon profil', sub: pr.done ? [LEVELS[pr.level]?.t, PLACES[pr.place]?.t, pr.days ? pr.days + ' séances / semaine' : ''].filter(Boolean).join(' · ') || 'Modifier' : 'Objectif, niveau, salle… 1 minute' })}
-    ${hasGym() ? listRow({ act: 'openGym', title: '📍 Ma salle et ses machines', sub: esc(gymLabel()) + ` · ${gymMachines().size} machines cochées` }) : ''}
-    ${pr.consent && (age || pr.height) ? `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">Infos perso</span><span class="lrow-s">${[age ? age + ' ans' : '', pr.height ? pr.height + ' cm' : ''].filter(Boolean).join(' · ')}</span></span></div>` : ''}
-    ${pr.done ? listRow({ act: 'clearProfile', title: 'Effacer mes infos perso', sub: 'Profil, âge, taille et poids', cls: 'danger' }) : ''}
-  </div>`;
-  const th = db.settings.theme || 'auto', pal = db.settings.palette || 'graphite';
-  h += `<h2>Apparence</h2><div class="list">
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Mode</span><span class="lrow-s">${th === 'auto' ? 'suit ton téléphone' : th === 'dark' ? 'toujours sombre' : 'toujours clair'}</span></span>
-      <div class="seg" role="group" aria-label="Mode">${[['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, v]) => `<button class="${th === k ? 'on' : ''}" data-act="setTheme" data-v="${k}">${v}</button>`).join('')}</div></div>
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Couleurs</span><span class="lrow-s">s'applique à toute l'appli</span></span></div>
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Taille du texte</span><span class="lrow-s">plus lisible à la salle</span></span>
-      <div class="seg" role="group" aria-label="Taille du texte">${[['m', 'A'], ['l', 'A+'], ['xl', 'A++']].map(([k, v]) => `<button class="${(db.settings.textSize || 'm') === k ? 'on' : ''}" data-act="setPref" data-k="textSize" data-v="${k}" aria-label="Texte ${v}">${v}</button>`).join('')}</div></div>
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Animations</span><span class="lrow-s">confettis, transitions…</span></span>
-      <div class="seg" role="group" aria-label="Animations">${[['auto', 'Normales'], ['reduced', 'Réduites']].map(([k, v]) => `<button class="${(db.settings.motion || 'auto') === k ? 'on' : ''}" data-act="setPref" data-k="motion" data-v="${k}">${v}</button>`).join('')}</div></div>
-    <div class="palettes">${PALETTES.map(p => `<button class="pal ${pal === p.id ? 'on' : ''}" data-act="setPalette" data-v="${p.id}" aria-pressed="${pal === p.id}">
-      <i style="background:linear-gradient(135deg,${p.c[0]},${p.c[1]} 55%,${p.c[2]})">${pal === p.id ? '<span style="color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)">✓</span>' : ''}</i>${p.t}</button>`).join('')}</div>
-  </div>`;
-  h += `<h2>Réglages</h2><div class="list">
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Temps de repos</span><span class="lrow-s">par défaut, après chaque exercice</span></span>${miniStepper('rest', 15, 's')}</div>
-    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Objectif par semaine</span><span class="lrow-s">${db.settings.goalAuto !== false ? `auto : ${weeklyGoal()} = tes jours d'entraînement programmés` : 'nombre de séances, choisi par toi'}</span></span>
-      <div class="seg" role="group" aria-label="Objectif">${[['auto', 'Auto'], ['manual', 'Manuel']].map(([k, v]) => `<button class="${(db.settings.goalAuto !== false) === (k === 'auto') ? 'on' : ''}" data-act="setGoalMode" data-v="${k}">${v}</button>`).join('')}</div></div>
-    ${db.settings.goalAuto === false ? `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">Séances par semaine</span></span>${miniStepper('weeklyGoal', 1)}</div>` : ''}
+  const pal = PALETTES.find(p => p.id === (db.settings.palette || 'graphite'));
+  const th = { auto: 'auto', light: 'clair', dark: 'sombre' }[db.settings.theme || 'auto'];
+  h += `<div class="list">
+    ${listRow({ act: 'openPage', attrs: 'data-p="sport"', title: '🎯 Mon profil sportif', sub: pr.done ? [GOALS[pr.goal]?.t, LEVELS[pr.level]?.t].filter(Boolean).join(' · ') || 'Modifier' : 'À compléter · 1 minute' })}
+    ${hasGym() ? listRow({ act: 'openGym', title: '📍 Ma salle', sub: esc(gymLabel()) }) : ''}
   </div>
-  <h2>Mes données</h2><div class="list">
-    ${listRow({ act: 'export', title: 'Exporter une sauvegarde' })}
-    ${listRow({ act: 'import', title: 'Importer une sauvegarde' })}
-    ${auth ? listRow({ act: 'logout', title: 'Se déconnecter' }) : ''}
-    ${listRow({ act: 'deleteProgress', title: 'Supprimer mes progrès', sub: 'Historique, records et graphiques (ta semaine est gardée)', cls: 'danger' })}
-    ${listRow({ act: 'wipe', title: 'Tout effacer', sub: 'Progrès + séances programmées + réglages', cls: 'danger' })}
+  <div class="list">
+    ${listRow({ act: 'openPage', attrs: 'data-p="training"', title: '⏱️ Entraînement', sub: `Repos ${db.settings.rest} s · objectif ${weeklyGoal()} séances / semaine` })}
+    ${listRow({ act: 'openPage', attrs: 'data-p="appearance"', title: '🎨 Apparence', sub: `${pal ? pal.t : ''} · mode ${th}` })}
+    ${listRow({ act: 'openPage', attrs: 'data-p="data"', title: '💾 Mes données', sub: 'Sauvegarde, suppression' })}
   </div>
-  <p class="muted small center">${db.programs.length} séance(s) programmée(s) · ${db.sessions.length} entraînement(s) enregistré(s)</p>
-  <p class="muted small center">Version ${APP_VERSION}</p>`;
+  ${auth ? `<div class="list">${listRow({ act: 'logout', title: 'Se déconnecter', cls: 'danger' })}</div>` : ''}
+  <p class="muted small center">Séances · version ${APP_VERSION}</p>`;
   return h;
 }
+function viewPage() {
+  const p = ui.page, pr = profile();
+  const head = t => `<header class="top"><button class="back" data-act="closePage">‹ Profil</button><h1>${t}</h1></header>`;
+  const row = (t, s, right = '') => `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">${t}</span>${s ? `<span class="lrow-s">${s}</span>` : ''}</span>${right}</div>`;
+  if (p === 'sport') {
+    const age = pr.birthYear ? new Date().getFullYear() - pr.birthYear : null;
+    let h = head('Mon profil sportif');
+    if (!pr.done) return h + `<div class="card"><p>Réponds à quelques questions pour que l'appli te propose les bonnes séries, les bons temps de repos et les machines de ta salle.</p><button class="btn primary block" data-act="openOnboard">Compléter mon profil</button></div>`;
+    h += `<div class="list">
+      ${row('Objectif', '', `<strong>${esc(GOALS[pr.goal]?.t || '–')}</strong>`)}
+      ${row('Niveau', '', `<strong>${esc(LEVELS[pr.level]?.t || '–')}</strong>`)}
+      ${row('Lieu', '', `<strong>${esc(PLACES[pr.place]?.t.replace(/ \(.*\)/, '') || '–')}</strong>`)}
+      ${row('Séances par semaine', '', `<strong>${pr.days || '–'}</strong>`)}
+      ${pr.consent ? row('Âge', '', `<strong>${age ? age + ' ans' : '–'}</strong>`) + row('Taille', '', `<strong>${pr.height ? pr.height + ' cm' : '–'}</strong>`) : ''}
+    </div>
+    <button class="btn primary block" data-act="openOnboard">Modifier mon profil</button>
+    <div class="list">${listRow({ act: 'clearProfile', title: 'Effacer mes infos perso', sub: 'Profil, âge, taille et historique de poids', cls: 'danger' })}</div>`;
+    return h;
+  }
+  if (p === 'training') {
+    const auto = db.settings.goalAuto !== false;
+    return head('Entraînement') + `<div class="list">
+      ${row('Temps de repos', 'par défaut, après chaque exercice', miniStepper('rest', 15, 's'))}
+      ${row('Objectif par semaine', auto ? `${weeklyGoal()} = tes jours d'entraînement programmés` : 'choisi par toi', segBtns('setGoalMode', auto ? 'auto' : 'manual', [['auto', 'Auto'], ['manual', 'Manuel']]))}
+      ${auto ? '' : row('Séances par semaine', '', miniStepper('weeklyGoal', 1))}
+    </div>`;
+  }
+  if (p === 'appearance') {
+    const pal = db.settings.palette || 'graphite';
+    return head('Apparence') + `<div class="list">
+      ${row('Mode', '', segBtns('setTheme', db.settings.theme || 'auto', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
+      ${row('Taille du texte', '', segBtns('setPref', db.settings.textSize || 'm', [['m', 'A'], ['l', 'A+'], ['xl', 'A++']], 'data-k="textSize"'))}
+      ${row('Animations', '', segBtns('setPref', db.settings.motion || 'auto', [['auto', 'Normales'], ['reduced', 'Réduites']], 'data-k="motion"'))}
+    </div>
+    <h2>Couleurs</h2>
+    <div class="list"><div class="palettes">${PALETTES.map(x => `<button class="pal ${pal === x.id ? 'on' : ''}" data-act="setPalette" data-v="${x.id}" aria-pressed="${pal === x.id}">
+      <i style="background:linear-gradient(135deg,${x.c[0]},${x.c[1]} 55%,${x.c[2]})">${pal === x.id ? '<span style="color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)">✓</span>' : ''}</i>${x.t}</button>`).join('')}</div></div>`;
+  }
+  if (p === 'data') {
+    return head('Mes données') + `<p class="muted small">${db.programs.length} séance(s) programmée(s) · ${db.sessions.length} entraînement(s) enregistré(s)${auth ? ' · synchronisé avec ton compte' : ' · uniquement sur cet appareil'}</p>
+    <div class="list">
+      ${listRow({ act: 'export', title: 'Exporter une sauvegarde', sub: 'Fichier à garder de côté' })}
+      ${listRow({ act: 'import', title: 'Importer une sauvegarde' })}
+    </div>
+    <div class="list">
+      ${listRow({ act: 'deleteProgress', title: 'Supprimer mes progrès', sub: 'Historique, records et graphiques', cls: 'danger' })}
+      ${listRow({ act: 'wipe', title: 'Tout effacer', sub: 'Progrès, semaine programmée et réglages', cls: 'danger' })}
+    </div>`;
+  }
+  ui.view = null; return viewProfile();
+}
+/* Connexion : présentation classique (onglets, œil, mot de passe oublié) */
 function viewAuth() {
-  const first = !welcomed();
+  const m = ui.authMode || 'login', first = !welcomed(), email = esc(ui.authEmail || (auth && auth.user.email) || '');
+  const pw = (id, ph, ac) => `<div class="pw"><input id="${id}" class="txt" type="password" autocomplete="${ac}" placeholder="${ph}" aria-label="${ph}">
+    <button type="button" class="pw-eye" data-act="togglePw" aria-label="Afficher le mot de passe">👁</button></div>`;
+  let form = '';
+  if (m === 'login' || m === 'signup') {
+    form = `${segBtns('authMode', m, [['login', 'Se connecter'], ['signup', 'Créer un compte']])}
+      <input id="authEmail" class="txt" type="email" autocomplete="email" inputmode="email" autocapitalize="off" placeholder="Adresse email" aria-label="Adresse email" value="${email}">
+      ${pw('authPw', m === 'signup' ? 'Mot de passe (6 caractères min.)' : 'Mot de passe', m === 'signup' ? 'new-password' : 'current-password')}
+      ${m === 'signup' ? pw('authPw2', 'Confirme le mot de passe', 'new-password') : `<button class="link forgot" data-act="authMode" data-v="forgot">Mot de passe oublié ?</button>`}
+      <p class="msg" id="authMsg" role="status"></p>
+      <button class="btn primary block" data-act="authSubmit">${m === 'signup' ? 'Créer mon compte' : 'Se connecter'}</button>`;
+  } else if (m === 'forgot') {
+    form = `<p class="auth-t">Mot de passe oublié</p><p class="muted small">Indique ton email : tu recevras un lien pour choisir un nouveau mot de passe.</p>
+      <input id="authEmail" class="txt" type="email" autocomplete="email" inputmode="email" autocapitalize="off" placeholder="Adresse email" aria-label="Adresse email" value="${email}">
+      <p class="msg" id="authMsg" role="status"></p>
+      <button class="btn primary block" data-act="authSubmit">Envoyer le lien</button>
+      <button class="link" data-act="authMode" data-v="login">‹ Retour à la connexion</button>`;
+  } else if (m === 'reset') {
+    form = `<p class="auth-t">Nouveau mot de passe</p>
+      ${pw('authPw', 'Nouveau mot de passe', 'new-password')}${pw('authPw2', 'Confirme le mot de passe', 'new-password')}
+      <p class="msg" id="authMsg" role="status"></p>
+      <button class="btn primary block" data-act="authSubmit">Enregistrer</button>`;
+  }
   return `<div class="auth">
     <div class="logo">${ic('dumbbell')}</div>
     <h1 class="center">Séances</h1>
-    <p class="muted center">Connecte-toi pour retrouver ton suivi sur ton téléphone, ton PC et tous tes appareils.</p>
-    <div class="card">
-      <label class="lbl" for="authEmail">Email</label>
-      <input id="authEmail" class="txt" type="email" autocomplete="email" inputmode="email" autocapitalize="off">
-      <label class="lbl" for="authPw">Mot de passe</label>
-      <input id="authPw" class="txt" type="password" autocomplete="current-password" placeholder="6 caractères minimum">
-      <p class="msg" id="authMsg" role="status"></p>
-      <button class="btn primary block" data-act="signIn">Se connecter</button>
-      <button class="btn block" data-act="signUp">Créer un compte</button>
-    </div>
-    <button class="btn text block" data-act="skipAuth">${first ? 'Continuer sans compte' : '‹ Retour'}</button>
+    <p class="muted center">Ton suivi d'entraînement, sur tous tes appareils.</p>
+    <div class="card auth-card">${form}</div>
+    ${m === 'reset' ? '' : `<button class="btn text block" data-act="skipAuth">${first ? 'Continuer sans compte' : '‹ Retour'}</button>`}
   </div>`;
 }
 
@@ -1284,6 +1333,7 @@ async function authFromLink() {
     const user = await r.json();
     setAuth({ access_token: at, refresh_token: rt, expires_in: +(h.get('expires_in') || 3600), user });
     markWelcomed();
+    if (h.get('type') === 'recovery') { ui.authMode = 'reset'; ui.view = 'auth'; render(); return; } // lien « mot de passe oublié »
     ui.confirmedEmail = user.email; ui.view = 'confirmed'; render(); toTop();
     sync();
   } catch (e) { toast('Connexion impossible depuis ce lien : connecte-toi avec ton email'); }
@@ -1461,7 +1511,43 @@ const actions = {
   timerStop() { stopTimer(); },
 
   /* Compte */
-  openAuth() { ui.view = 'auth'; render(); toTop(); },
+  openAuth() { ui.authMode = 'login'; ui.view = 'auth'; render(); toTop(); },
+  openPage(d) { ui.page = d.p; ui.view = 'page'; ui.tab = 'profile'; render(); toTop(); },
+  closePage() { ui.view = null; ui.tab = 'profile'; render(); toTop(); },
+  authMode(d) { ui.authMode = d.v; render(); const f = $('#authEmail') || $('#authPw'); if (f && !f.value) f.focus(); },
+  togglePw(d, b) {
+    const input = b.parentElement.querySelector('input'); if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    b.textContent = show ? '🙈' : '👁'; b.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  },
+  authSubmit() {
+    const m = ui.authMode || 'login';
+    if (m === 'signup') return actions.signUp();
+    if (m === 'forgot') return actions.forgotPw();
+    if (m === 'reset') return actions.resetPw();
+    return actions.signIn();
+  },
+  async forgotPw() {
+    const email = $('#authEmail').value.trim();
+    if (!email) { authMsg('Indique ton adresse email'); return; }
+    authMsg('Envoi…');
+    try { await authReq('recover?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { email }); }
+    catch (e) { authMsg(e.message); return; }
+    authMsg("C'est envoyé ! Si un compte existe avec cet email, tu vas recevoir un lien (pense aux spams).");
+  },
+  async resetPw() {
+    const pw = $('#authPw').value, pw2 = $('#authPw2').value;
+    if (pw.length < 6) { authMsg('6 caractères minimum'); return; }
+    if (pw !== pw2) { authMsg('Les deux mots de passe ne sont pas identiques'); return; }
+    authMsg('Enregistrement…');
+    try {
+      const t = await getToken();
+      const r = await fetch(`${CFG.supabaseUrl}/auth/v1/user`, { method: 'PUT', headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+      if (!r.ok) throw authError(await r.json().catch(() => ({})), r.status);
+    } catch (e) { authMsg(e.message || 'Impossible pour le moment, réessaie'); return; }
+    ui.authMode = 'login'; toast('Mot de passe modifié ✅'); afterAuthScreen();
+  },
   skipAuth() { markWelcomed(); afterAuthScreen(); },
   confirmedGo() { ui.confirmedEmail = null; afterAuthScreen(); },
   async signIn() {
@@ -1476,11 +1562,16 @@ const actions = {
     const email = $('#authEmail').value.trim(), pw = $('#authPw').value;
     if (!email || !pw) { authMsg('Renseigne ton email et choisis un mot de passe'); return; }
     if (pw.length < 6) { authMsg('Mot de passe trop court (6 caractères minimum)'); return; }
+    const pw2 = $('#authPw2'); if (pw2 && pw2.value !== pw) { authMsg('Les deux mots de passe ne sont pas identiques'); return; }
     authMsg('Création du compte…');
     let logged;
     try { logged = await apiSignUp(email, pw); }
     catch (e) { authMsg(e.message); return; }
-    if (!logged) { authMsg('Compte créé ! Clique sur le lien reçu par email, puis reviens ici et connecte-toi.'); return; }
+    if (!logged) {
+      ui.authEmail = email; ui.authMode = 'login'; render();
+      authMsg('📩 Compte créé ! Ouvre l\'email de confirmation, clique sur le lien, puis connecte-toi ici.');
+      return;
+    }
     markWelcomed(); toast('Compte créé ✅'); await sync(); afterAuthScreen();
   },
   syncNow() { sync(); },
@@ -1550,6 +1641,7 @@ const actions = {
     if (ex) { ex.kg = v; ex.u = now(); } else db.body.push({ id: uid(), u: now(), date: today.toISOString(), kg: v });
     saveDb(); render(); toast('Poids noté ✅');
   },
+  statTab(d) { ui.statTab = d.v; render(); },
   setGoalMode(d) {
     if (d.v === 'manual' && db.settings.goalAuto !== false) db.settings.weeklyGoal = weeklyGoal();
     db.settings.goalAuto = d.v === 'auto'; db.settingsU = now(); saveDb(); render();
@@ -1610,6 +1702,7 @@ document.addEventListener('input', ev => {
     afterScopeChange(d.scope);
     return;
   }
+  if (t.id === 'authEmail') { ui.authEmail = t.value; return; }
   if (d.ob && ui.ob) { if (t.type !== 'checkbox') ui.ob.data[d.ob] = t.value; return; }
   if (d.draft && ui.draft) { ui.draft[d.draft] = t.value; return; }
   if (d.sheet && ui.sheet) { ui.sheet.ex[d.sheet] = t.value; }
@@ -1626,7 +1719,7 @@ document.addEventListener('change', ev => {
 });
 
 document.addEventListener('keydown', ev => {
-  if (ev.key === 'Enter' && ev.target.id === 'authPw') actions.signIn();
+  if (ev.key === 'Enter' && ['authEmail', 'authPw', 'authPw2'].includes(ev.target.id)) { ev.preventDefault(); actions.authSubmit(); }
   if (ev.key === 'Enter' && ev.target.id === 'bwInput') actions.addBody();
 });
 
