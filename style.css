@@ -220,17 +220,15 @@ select.txt { appearance: none; background-image: linear-gradient(45deg, transpar
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }
 .cal-wd { text-align: center; font-size: .75rem; color: var(--muted); padding: 4px 0; }
 .cal-d {
-  -webkit-appearance: none; appearance: none; margin: 0;
-  height: 54px; padding: 4px 2px; border-radius: 10px; border: 1px solid transparent;
-  background: var(--bg); color: var(--text); font: inherit;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; overflow: hidden;
+  -webkit-appearance: none; appearance: none; margin: 0; padding: 0;
+  height: 42px; border-radius: 10px; border: 2px solid transparent;
+  background: var(--bg); color: var(--text); font: 600 .9rem var(--font);
+  display: grid; place-items: center; line-height: 1;
 }
-.cal-d:disabled { cursor: default; opacity: 1; }
-.cal-n { font-size: .85rem; font-weight: 600; }
-.cal-nm { font-size: .58rem; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-d.today { border-color: var(--muted); }
-.cal-d.done { background: var(--ok); color: #fff; cursor: pointer; }
-.cal-d.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.cal-d:disabled { cursor: default; opacity: 1; color: var(--text); }
+.cal-d.today { border-color: var(--line); }
+.cal-d.done { border-color: var(--ok); color: var(--ok); cursor: pointer; }
+.cal-d.sel { background: var(--ok); color: #fff; }
 
 /* Feuille (bottom sheet) */
 .sheet-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 40; animation: fade .2s ease; }

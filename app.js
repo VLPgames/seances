@@ -27,18 +27,46 @@ const CATS = {
   repos: { e: '😴', t: 'Repos', s: 'Jour off, rien à faire' },
 };
 const SALLE_TYPES = ['Push', 'Pull', 'Leg day', 'Full body', 'Haut du corps', 'Bas du corps'];
-/* Propositions d'exercices : [nom, type, unité] */
-const SUGGEST = {
-  Push: [['Développé couché', 'muscu'], ['Développé incliné haltères', 'muscu'], ['Développé militaire', 'muscu'], ['Élévations latérales', 'muscu'], ['Écarté poulie', 'muscu'], ['Dips', 'pdc'], ['Extension triceps poulie', 'muscu']],
-  Pull: [['Tractions', 'pdc'], ['Tirage vertical', 'muscu'], ['Rowing barre', 'muscu'], ['Rowing haltère', 'muscu'], ['Face pull', 'muscu'], ['Curl biceps', 'muscu'], ['Curl marteau', 'muscu']],
-  'Leg day': [['Squat', 'muscu'], ['Presse à cuisses', 'muscu'], ['Fentes', 'muscu'], ['Soulevé de terre roumain', 'muscu'], ['Leg curl', 'muscu'], ['Leg extension', 'muscu'], ['Mollets', 'muscu']],
-  'Full body': [['Squat', 'muscu'], ['Développé couché', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Rowing haltère', 'muscu'], ['Gainage', 'pdc', 'sec']],
-  'Haut du corps': [['Développé couché', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Rowing barre', 'muscu'], ['Curl biceps', 'muscu'], ['Extension triceps poulie', 'muscu']],
-  'Bas du corps': [['Squat', 'muscu'], ['Presse à cuisses', 'muscu'], ['Fentes', 'muscu'], ['Leg curl', 'muscu'], ['Mollets', 'muscu']],
-  salle: [['Développé couché', 'muscu'], ['Squat', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Curl biceps', 'muscu'], ['Gainage', 'pdc', 'sec']],
-  maison: [['Pompes', 'pdc'], ['Squats', 'pdc'], ['Fentes', 'pdc'], ['Gainage', 'pdc', 'sec'], ['Burpees', 'pdc'], ['Crunchs', 'pdc'], ['Dips sur chaise', 'pdc'], ['Mountain climbers', 'pdc', 'sec']],
-  exterieur: [['Course', 'cardio'], ['Vélo', 'cardio'], ['Marche rapide', 'cardio'], ['Fractionné', 'cardio']],
+/* Catalogue : groupe -> exercices. Suffixe « | pdc », « | pdc sec » ou « | cardio » ; par défaut muscu (charge en kg). */
+const CATALOG = {
+  salle: {
+    'Pectoraux': ['Développé couché (barre)', 'Développé couché haltères', 'Développé incliné', 'Développé décliné', 'Presse pectoraux (machine)', 'Pec deck / butterfly', 'Écarté poulie vis-à-vis', 'Dips | pdc'],
+    'Dos': ['Tirage vertical (poulie haute)', 'Tirage horizontal (poulie basse)', 'Rowing barre', 'Rowing haltère', 'Rowing machine', 'Pull-over poulie', 'Tractions | pdc', 'Soulevé de terre', 'Extension lombaires'],
+    'Épaules': ['Développé militaire', 'Développé épaules (machine)', 'Élévations latérales', 'Élévations latérales poulie', 'Oiseau (machine reverse fly)', 'Face pull', 'Shrugs'],
+    'Biceps': ['Curl barre', 'Curl haltères', 'Curl marteau', 'Curl pupitre', 'Curl poulie'],
+    'Triceps': ['Extension triceps poulie', 'Barre au front', 'Extension nuque haltère', 'Dips machine', 'Kickback'],
+    'Jambes': ['Squat', 'Presse à cuisses', 'Hack squat', 'Fentes', 'Leg extension', 'Leg curl allongé', 'Leg curl assis', 'Soulevé de terre roumain', 'Hip thrust', 'Adducteurs (machine)', 'Abducteurs (machine)', 'Mollets debout', 'Mollets assis'],
+    'Abdos': ['Crunch machine', 'Crunch poulie', 'Relevé de jambes | pdc', 'Gainage | pdc sec', 'Rotations russes | pdc'],
+    'Cardio': ['Tapis de course | cardio', 'Vélo | cardio', 'Rameur | cardio', 'Elliptique | cardio', 'Stairmaster | cardio'],
+  },
+  maison: {
+    'Haut du corps': ['Pompes | pdc', 'Pompes diamant | pdc', 'Pompes inclinées | pdc', 'Pike push-up | pdc', 'Dips sur chaise | pdc', 'Tractions (barre de porte) | pdc'],
+    'Bas du corps': ['Squats | pdc', 'Fentes | pdc', 'Squats sautés | pdc', 'Pont fessier | pdc', 'Chaise | pdc sec', 'Mollets | pdc'],
+    'Abdos / gainage': ['Gainage | pdc sec', 'Gainage latéral | pdc sec', 'Crunchs | pdc', 'Relevés de jambes | pdc', 'Mountain climbers | pdc sec', 'Russian twist | pdc'],
+    'Cardio': ['Burpees | pdc', 'Jumping jacks | pdc sec', 'Corde à sauter | pdc sec', 'Montées de genoux | pdc sec'],
+  },
+  exterieur: {
+    'Activités': ['Course | cardio', 'Fractionné | cardio', 'Vélo | cardio', 'Marche rapide | cardio', 'Randonnée | cardio', 'Natation | cardio'],
+  },
 };
+/* Groupes mis en avant selon le type de séance salle */
+const FOCUS = {
+  'Push': ['Pectoraux', 'Épaules', 'Triceps'], 'Pull': ['Dos', 'Biceps'], 'Leg day': ['Jambes', 'Abdos'],
+  'Haut du corps': ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps'], 'Bas du corps': ['Jambes', 'Abdos'],
+};
+function parseItem(s) {
+  const [name, tag = ''] = s.split(' | ');
+  const type = tag.startsWith('cardio') ? 'cardio' : tag.startsWith('pdc') ? 'pdc' : 'muscu';
+  return { name, type, unit: tag.includes('sec') ? 'sec' : 'reps' };
+}
+function exFromItem(s) {
+  const { name, type, unit } = parseItem(s), cardio = type === 'cardio';
+  return {
+    id: uid(), name, type, unit,
+    sets: cardio ? null : (type === 'muscu' ? 4 : 3), reps: cardio ? null : (unit === 'sec' ? 30 : type === 'muscu' ? 10 : 15),
+    kg: null, km: cardio ? 5 : null, min: cardio ? 30 : null, rest: null,
+  };
+}
 
 const now = () => Date.now();
 const uid = () => now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -86,7 +114,17 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="no
 
 /* ---------- Données locales ---------- */
 function emptyDb() {
-  return { version: 3, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3 }, settingsU: 0 };
+  return { version: 3, exClean: true, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3 }, settingsU: 0 };
+}
+const V1_EXAMPLES = {
+  'Push (pecs, épaules, triceps)': ['Développé couché', 'Développé incliné haltères', 'Écarté poulie vis-à-vis', 'Élévations latérales', 'Extension triceps poulie'],
+  'Circuit maison': ['Pompes', 'Squats poids du corps', 'Gainage'],
+  'Pull + jambes': ['Tirage poulie haute', 'Rowing poulie basse', 'Squat', 'Presse à cuisses', 'Curl biceps'],
+  'Footing': ['Course'],
+};
+function isExampleProgram(p) {
+  const ex = V1_EXAMPLES[p.name];
+  return !!ex && (p.exercises || []).map(e => e.name).join('|') === ex.join('|');
 }
 function inferCat(p) {
   const ex = p.exercises || [];
@@ -117,12 +155,21 @@ function migrateEntry(e, done) {
 }
 function migrate(d) {
   const base = emptyDb();
-  d = { ...base, ...d, settings: { ...base.settings, ...(d.settings || {}) }, deleted: d.deleted || {} };
+  const wasClean = !!d.exClean; // (emptyDb() vaut true : lire la valeur d'origine)
+  d = { ...base, ...d, settings: { ...base.settings, ...(d.settings || {}) }, deleted: { ...(d.deleted || {}) }, exClean: wasClean };
   if ((d.version || 1) < 2) {
     d.programs.forEach(p => { p.u = p.u || 1; p.exercises.forEach(e => { if (e.kg === undefined) e.kg = null; }); });
     d.sessions.forEach(s => { s.u = s.u || 1; s.exercises = s.exercises.map(e => migrateEntry(e, true)); });
     if (d.active) { d.active.u = d.active.u || 1; d.active.exercises = d.active.exercises.map(e => migrateEntry(e, false)); }
     d.version = 2;
+  }
+  // Une seule fois : retirer les séances d'exemple de la V1 (jamais demandées par l'utilisateur)
+  if (!d.exClean) {
+    d.programs = d.programs.filter(p => {
+      if (!isExampleProgram(p)) return true;
+      d.deleted[p.id] = now(); return false;
+    });
+    d.exClean = true;
   }
   d.programs.forEach(p => {
     if (!p.cat) p.cat = inferCat(p);
@@ -157,7 +204,7 @@ function mergeList(a, b, deleted) {
 function mergeDb(a, b) {
   const deleted = { ...(a.deleted || {}) };
   for (const [k, v] of Object.entries(b.deleted || {})) deleted[k] = Math.max(deleted[k] || 0, v);
-  const out = { version: 3, deleted };
+  const out = { version: 3, deleted, exClean: !!(a.exClean || b.exClean) };
   out.programs = mergeList(a.programs, b.programs, deleted);
   out.sessions = mergeList(a.sessions, b.sessions, deleted);
   out.activeClearedAt = Math.max(a.activeClearedAt || 0, b.activeClearedAt || 0);
@@ -549,25 +596,15 @@ function viewPrograms() {
     const sub = tr.length ? tr.map(progLabel).join(' + ') : rest ? '😴 Repos' : '<span class="todo">À programmer</span>';
     return listRow({ act: 'dayPlan', attrs: `data-day="${i}"`, title: j, sub });
   }).join('')}</div>`;
-  const progs = db.programs.filter(p => p.cat !== 'repos');
-  if (progs.length) {
-    h += `<h2>Mes séances</h2>`;
-    for (const [k, c] of Object.entries(CATS)) {
-      if (k === 'repos') continue;
-      const list = progs.filter(p => p.cat === k);
-      if (!list.length) continue;
-      h += `<p class="cat-t">${c.e} ${c.t}</p><div class="list">${list.map(p => listRow({
-        act: 'editProgram', attrs: `data-id="${p.id}"`, title: esc(p.name),
-        sub: `${p.days.length ? [...p.days].sort().map(i => JOURS_COURT[i]).join(', ') : 'Aucun jour'} · ${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''}`,
-      })).join('')}</div>`;
-    }
-  }
-  return h + `<button class="btn primary block" data-act="newProgram">+ Nouvelle séance</button>`;
+  return h;
 }
-function suggestionsFor(p) {
-  const list = p.cat === 'salle' ? (SUGGEST[p.name.trim()] || SUGGEST.salle) : (SUGGEST[p.cat] || []);
-  const have = new Set(p.exercises.map(e => nkey(e.name)));
-  return list.filter(s => !have.has(nkey(s[0])));
+/* Catalogue à afficher dans l'éditeur : groupes utiles d'abord */
+function catalogFor(p) {
+  const groups = CATALOG[p.cat] || {};
+  const focus = p.cat === 'salle' ? FOCUS[p.name.trim()] : null;
+  const names = Object.keys(groups);
+  const shown = focus && !ui.allMachines ? names.filter(g => focus.includes(g)) : names;
+  return { groups, shown, hidden: names.length - shown.length };
 }
 function viewEditor() {
   const p = ui.draft, isNew = !db.programs.some(x => x.id === p.id), cat = CATS[p.cat];
@@ -582,12 +619,18 @@ function viewEditor() {
   if (p.cat !== 'repos') {
     h += `<h2>Exercices</h2>`;
     if (p.exercises.length) h += `<div class="list">${p.exercises.map((e, i) => listRow({ act: 'editExDraft', attrs: `data-i="${i}"`, title: esc(e.name), sub: planText(e) })).join('')}</div>`;
-    const sug = suggestionsFor(p);
-    if (sug.length) {
-      h += `<p class="cat-t">Propositions — touche pour ajouter</p>
-        <div class="chips tight">${sug.map(([n]) => `<button class="chip" data-act="addSuggest" data-n="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div>`;
+    const have = new Set(p.exercises.map(e => nkey(e.name)));
+    const { groups, shown, hidden } = catalogFor(p);
+    h += `<div class="card catalog"><p class="cat-head">${p.cat === 'salle' ? 'Machines et exercices' : p.cat === 'maison' ? 'Exercices à la maison' : 'Activités'} — touche pour ajouter</p>`;
+    for (const g of shown) {
+      h += `<p class="cat-t">${esc(g)}</p><div class="chips tight">${groups[g].map(s => {
+        const { name } = parseItem(s), added = have.has(nkey(name));
+        return `<button class="chip ${added ? 'on' : ''}" data-act="${added ? 'noop' : 'pickItem'}" data-item="${esc(s)}">${added ? '✓ ' : ''}${esc(name)}</button>`;
+      }).join('')}</div>`;
     }
-    h += `<button class="btn ghost block" data-act="addExDraft">+ Autre exercice</button>`;
+    if (hidden) h += `<button class="btn text block" data-act="toggleMachines">Voir toutes les machines (${hidden} groupes de plus)</button>`;
+    else if (ui.allMachines && p.cat === 'salle' && FOCUS[p.name.trim()]) h += `<button class="btn text block" data-act="toggleMachines">Afficher seulement ${esc(p.name.trim())}</button>`;
+    h += `<button class="btn text block" data-act="addExDraft">Mon exercice n'est pas dans la liste</button></div>`;
   }
   if (!isNew) h += `<button class="btn text danger block" data-act="deleteProgram">Supprimer ${p.cat === 'repos' ? 'les jours de repos' : 'cette séance'}</button>`;
   h += `<div class="footer-actions">${!isNew && p.cat !== 'repos' ? `<button class="btn" data-act="start" data-id="${p.id}">Démarrer</button>` : ''}<button class="btn primary" data-act="saveProgram">Enregistrer</button></div>`;
@@ -595,41 +638,27 @@ function viewEditor() {
 }
 function viewSheet() {
   if (ui.sheet.kind === 'cat') return viewCatSheet();
-  if (ui.sheet.kind === 'day') return viewDaySheet();
   return viewExSheet();
 }
 function viewCatSheet() {
-  const day = ui.sheet.day;
+  const day = ui.sheet.day, rest = day != null && isRestDay(day);
   return `<div class="sheet-bg" data-act="closeSheet"></div>
-  <div class="sheet" role="dialog" aria-label="Nouvelle séance"><div class="grab"></div>
+  <div class="sheet" role="dialog" aria-label="Programmer"><div class="grab"></div>
     <h3>${day != null ? 'Le ' + JOURS[day].toLowerCase() + ', ' : ''}c'est…</h3>
-    <div class="list">${Object.entries(CATS).map(([k, c]) => listRow({ act: 'pickCat', attrs: `data-v="${k}"`, title: `${c.e} ${c.t}`, sub: c.s })).join('')}</div>
+    <div class="list">${Object.entries(CATS).map(([k, c]) => listRow({ act: 'pickCat', attrs: `data-v="${k}"`, title: `${c.e} ${c.t}`, sub: c.s })).join('')}
+    ${rest ? listRow({ act: 'clearDay', title: 'Remettre à programmer', cls: 'danger' }) : ''}</div>
   </div>`;
-}
-function viewDaySheet() {
-  const day = ui.sheet.day, cur = trainingFor(day), rest = isRestDay(day);
-  const others = db.programs.filter(p => p.cat !== 'repos' && !p.days.includes(day));
-  let h = `<div class="sheet-bg" data-act="closeSheet"></div>
-  <div class="sheet" role="dialog" aria-label="${JOURS[day]}"><div class="grab"></div>
-    <h3>${JOURS[day]}</h3>`;
-  if (cur.length) h += `<p class="cat-t">Prévu</p><div class="list">${cur.map(p => listRow({ act: 'editProgram', attrs: `data-id="${p.id}"`, title: progLabel(p), sub: `${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''} · modifier` })).join('')}</div>`;
-  else if (rest) h += `<p class="muted">😴 Jour de repos</p>`;
-  h += `<div class="list">`;
-  h += listRow({ act: 'newProgram', attrs: `data-day="${day}"`, title: '+ Créer une nouvelle séance' });
-  if (others.length) h += others.map(p => listRow({ act: 'assignDay', attrs: `data-id="${p.id}"`, title: progLabel(p), sub: 'Mettre cette séance ce jour-là' })).join('');
-  if (!rest) h += listRow({ act: 'assignRest', title: '😴 Jour de repos' });
-  if (cur.length || rest) h += listRow({ act: 'clearDay', title: 'Laisser à programmer', cls: 'danger' });
-  return h + `</div></div>`;
 }
 function viewExSheet() {
   const s = ui.sheet, e = s.ex, isNew = s.index < 0;
   return `<div class="sheet-bg" data-act="closeSheet"></div>
   <div class="sheet" role="dialog" aria-label="Exercice">
     <div class="grab"></div>
+    ${s.fromCatalog ? `<h3>${esc(e.name)}</h3><p class="muted small">${e.type === 'cardio' ? 'Indique ta distance et ta durée habituelles.' : e.type === 'muscu' ? 'Indique le poids que tu fais, tes séries et tes reps.' : 'Indique tes séries et tes reps.'}</p>` : `
     <h3>${isNew ? 'Nouvel exercice' : 'Exercice'}</h3>
     <input class="txt big" data-sheet="name" value="${esc(e.name)}" placeholder="Nom (ex. Tirage poulie haute)" list="exNames" autocomplete="off">
-    <div class="chips">${Object.entries(TYPES).map(([k, v]) => `<button class="chip ${e.type === k ? 'on' : ''}" data-act="sheetType" data-v="${k}">${v}</button>`).join('')}</div>
-    ${e.type === 'pdc' ? `<div class="chips">${[['reps', 'En répétitions'], ['sec', 'En secondes']].map(([k, v]) => `<button class="chip ${(e.unit || 'reps') === k ? 'on' : ''}" data-act="sheetUnit" data-v="${k}">${v}</button>`).join('')}</div>` : ''}
+    <div class="chips">${Object.entries(TYPES).map(([k, v]) => `<button class="chip ${e.type === k ? 'on' : ''}" data-act="sheetType" data-v="${k}">${v}</button>`).join('')}</div>`}
+    ${e.type === 'pdc' && !s.fromCatalog ? `<div class="chips">${[['reps', 'En répétitions'], ['sec', 'En secondes']].map(([k, v]) => `<button class="chip ${(e.unit || 'reps') === k ? 'on' : ''}" data-act="sheetUnit" data-v="${k}">${v}</button>`).join('')}</div>` : ''}
     <div class="steps">${steppersFor(e, 'sheet', 0)}${e.type !== 'cardio' ? stepper('Repos', 'sheet', 0, 'rest', e.rest, 15, 's') : ''}</div>
     ${s.mode === 'draft' && !isNew ? `<div class="row"><button class="btn small" data-act="moveEx" data-d="-1">↑ Monter</button><button class="btn small" data-act="moveEx" data-d="1">↓ Descendre</button><button class="btn small danger" data-act="delEx">Supprimer</button></div>` : ''}
     <button class="btn primary block" data-act="saveSheet">${s.mode === 'session' ? 'Ajouter à la séance' : 'Valider'}</button>
@@ -664,7 +693,7 @@ function viewHistory() {
         ${Array.from({ length: nbDays }, (_, i) => {
           const d = i + 1, list = byDay.get(d), isToday = sameDay(new Date(y, m, d), n), sel = ui.calSel === `${y}-${m}-${d}`;
           return `<button class="cal-d ${list ? 'done' : ''} ${isToday ? 'today' : ''} ${sel ? 'sel' : ''}" ${list ? `data-act="calPick" data-k="${y}-${m}-${d}"` : 'disabled'}>
-            <span class="cal-n">${d}</span>${list ? `<span class="cal-nm">${esc(list[0].programName)}</span>` : ''}</button>`;
+            ${d}</button>`;
         }).join('')}
       </div>
       <p class="muted small">${count ? `${count} séance${count > 1 ? 's' : ''} ce mois-ci` : 'Aucune séance ce mois-ci'}</p>
@@ -782,7 +811,8 @@ function viewProfile() {
     ${listRow({ act: 'export', title: 'Exporter une sauvegarde' })}
     ${listRow({ act: 'import', title: 'Importer une sauvegarde' })}
     ${auth ? listRow({ act: 'logout', title: 'Se déconnecter' }) : ''}
-    ${listRow({ act: 'wipe', title: 'Tout effacer', cls: 'danger' })}
+    ${listRow({ act: 'deleteProgress', title: 'Supprimer mes progrès', sub: 'Historique, records et graphiques (ta semaine est gardée)', cls: 'danger' })}
+    ${listRow({ act: 'wipe', title: 'Tout effacer', sub: 'Progrès + séances programmées + réglages', cls: 'danger' })}
   </div>
   <p class="muted small center">${db.programs.length} séance(s) programmée(s) · ${db.sessions.length} entraînement(s) enregistré(s)</p>`;
   return h;
@@ -910,21 +940,16 @@ const actions = {
     ui.draft = { id: uid(), cat: d.v, name, days: day != null ? [day] : [], exercises: [] };
     ui.sheet = null; ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
   },
-  pickType(d) { ui.draft.name = d.v; render(); },
-  addSuggest(d) {
-    const s = Object.values(SUGGEST).flat().find(x => x[0] === d.n); if (!s) return;
-    const [name, type, unit] = s, cardio = type === 'cardio';
-    ui.draft.exercises.push({
-      id: uid(), name, type, unit: unit || 'reps',
-      sets: cardio ? null : (type === 'muscu' ? 4 : 3), reps: cardio ? null : (unit === 'sec' ? 30 : type === 'muscu' ? 10 : 15),
-      kg: null, km: cardio ? 5 : null, min: cardio ? 30 : null, rest: null,
-    });
-    render();
-  },
-  dayPlan(d) { ui.sheet = { kind: 'day', day: +d.day }; render(); },
-  assignDay(d) {
-    const p = db.programs.find(x => x.id === d.id); if (!p) return;
-    setDay(p, ui.sheet.day); saveDb(); ui.sheet = null; render(); toast(`${p.name} : c'est noté`);
+  pickType(d) { ui.draft.name = d.v; ui.allMachines = false; render(); },
+  /* Touche une machine : on ouvre la fiche pour régler poids, séries, reps */
+  pickItem(d) { ui.sheet = { mode: 'draft', index: -1, ex: exFromItem(d.item), fromCatalog: true }; render(); },
+  toggleMachines() { ui.allMachines = !ui.allMachines; render(); },
+  noop() {},
+  /* Jour vide (ou repos) : les 4 choix ; jour avec séance : on la modifie */
+  dayPlan(d) {
+    const day = +d.day, tr = trainingFor(day);
+    if (tr.length) { actions.editProgram({ id: tr[0].id }); return; }
+    ui.sheet = { kind: 'cat', day }; render();
   },
   assignRest() { setRest(ui.sheet ? ui.sheet.day : null); },
   clearDay() {
@@ -1047,6 +1072,17 @@ const actions = {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },
   import() { $('#importFile').click(); },
+  deleteProgress() {
+    const n = db.sessions.length;
+    if (!n && !db.active) { toast("Tu n'as pas encore de progrès enregistrés"); return; }
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer vos progrès ?\n\n${n} séance(s) de l'historique, tes records et tes graphiques seront effacés définitivement. Ta semaine programmée est conservée.`)) return;
+    const t = now();
+    db.sessions.forEach(s => { db.deleted[s.id] = t; });
+    db.sessions = [];
+    if (db.active) clearActive();
+    ui.calSel = null; ui.statKey = null;
+    saveDb(); render(); toast('Progrès supprimés');
+  },
   wipe() {
     if (!confirm(auth ? 'Tout effacer, sur cet appareil ET sur ton compte ?' : 'Tout effacer (séances, historique, réglages) ?')) return;
     if (!confirm('Vraiment ? Action définitive. Pense à exporter avant.')) return;
