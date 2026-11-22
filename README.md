@@ -14,7 +14,11 @@ En ligne : https://vlpgames.github.io/seances/
 - Accueil : anneau de la semaine, série 🔥, carte de la séance du jour (durée estimée, muscles travaillés).
 - Séance : chrono, minuteur de repos en cercle, confettis sur record ; résumé de fin (durée, volume vs dernière fois, records).
 - Progrès : volume par semaine, poids du corps, records, graphique par exercice.
-- Apparence : mode auto / clair / sombre + 6 palettes (Graphite, Océan, Forêt, Sunset, Feu, Néon).
+- Apparence : mode auto / clair / sombre + 6 palettes (Graphite, Océan, Forêt, Sunset, Feu, Néon), taille du texte, animations réduites.
+- Profil sportif (questionnaire d'accueil facultatif) : objectif, niveau, lieu, salle (Basic-Fit, Fitness Park, L'Orange Bleue, Keepcool, On Air, Neoness ou autre), âge/taille/poids avec consentement dédié → valeurs proposées adaptées.
+- Ma salle : liste de machines indicative par enseigne, ajustable ; le catalogue propose d'abord les machines de ta salle.
+- Progrès : séries par muscle cette semaine (repère ACSM ~10/semaine).
+- Recherche et sources : `docs/recherche-v2.md`.
 
 ## Comptes et synchro
 - Hors ligne d'abord : tout est enregistré sur l'appareil, puis synchronisé avec le compte dès qu'il y a du réseau (fusion par élément, la modification la plus récente gagne).

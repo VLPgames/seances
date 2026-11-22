@@ -70,7 +70,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 input, select, textarea { max-width: 100%; }
 body {
   background: var(--bg); color: var(--text);
-  font: 16px/1.45 var(--font);
+  font: 1rem/1.45 var(--font); /* en rem : suit le réglage « Taille du texte » */
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
 }
@@ -518,7 +518,58 @@ main > *:nth-child(n+6) { animation-delay: .2s; }
 @keyframes grow { from { transform: scaleY(0); } }
 .bw-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 12px; }
 
+/* Questionnaire d'accueil */
+.ob { padding-bottom: 20px; }
+.ob-top { display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+.ob-dots { display: flex; gap: 6px; margin: 6px 0 22px; }
+.ob-dots i { flex: 1; height: 4px; border-radius: 99px; background: var(--line); }
+.ob-dots i.on { background: var(--grad); }
+.ob h1 { font-size: 1.9rem; margin-bottom: 8px; }
+.ob-list { display: grid; gap: 10px; margin-top: 18px; }
+.ob-opt, .ob-invite {
+  -webkit-appearance: none; appearance: none; margin: 0; width: 100%; text-align: left;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  min-height: 64px; padding: 12px 16px; border-radius: var(--radius);
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: inherit; cursor: pointer;
+}
+.ob-opt.on { border-color: var(--accent); background: var(--grad-soft); }
+.ob-e { font-size: 1.6rem; line-height: 1; }
+.ob-txt { display: flex; flex-direction: column; min-width: 0; }
+.ob-txt strong { font-weight: 700; }
+.ob-txt span { font-size: .85rem; color: var(--muted); }
+.ob-check { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--on-grad); }
+.ob-opt.on .ob-check { background: var(--grad); }
+.ob-check .ic { width: 16px; height: 16px; stroke-width: 3; }
+.ob-days { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
+.ob-days button { height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: 700 1.4rem var(--font-title); cursor: pointer; }
+.ob-days button.on { background: var(--grad); color: var(--on-grad); border-color: transparent; }
+.consent { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; margin: 18px 0 4px; padding: 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); cursor: pointer; font-size: .92rem; }
+.consent input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); }
+.ob-invite { margin: 12px 0; border-color: var(--accent); }
+.ob-invite .ic { color: var(--muted); }
+.grid2 > div .lbl { margin-top: 14px; }
+.chip.absent { opacity: .55; border-style: dashed; }
+
+/* Séries par muscle */
+.mbars { display: grid; gap: 8px; margin: 12px 0 6px; }
+.mbar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 42px; align-items: center; gap: 10px; font-size: .85rem; }
+.mb-l { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-t { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.mb-t b { display: block; height: 100%; border-radius: 99px; background: var(--grad); animation: growX .8s cubic-bezier(.2, .8, .2, 1) both; transform-origin: left; }
+.mb-v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mb-v.ok { color: var(--ok); }
+@keyframes growX { from { transform: scaleX(0); } }
+
+/* Cibles tactiles confortables (≥ 44 px) */
+.link, .icon-btn, .back { min-height: 44px; }
+.btn.small { min-height: 40px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 @media (prefers-reduced-motion: reduce) {
-  main > *, .sheet, .sheet-bg, .ring .r-fg, .streak .flame, .exc.pop, .exc.pop .tick { animation: none !important; }
+  main > *, .sheet, .sheet-bg, .ring .r-fg, .streak .flame, .exc.pop, .exc.pop .tick, .vbar b, .mb-t b { animation: none !important; }
   .bubble { transition: none; }
 }
+:root[data-motion="reduced"] main > *, :root[data-motion="reduced"] .sheet, :root[data-motion="reduced"] .sheet-bg,
+:root[data-motion="reduced"] .ring .r-fg, :root[data-motion="reduced"] .streak .flame, :root[data-motion="reduced"] .exc.pop,
+:root[data-motion="reduced"] .exc.pop .tick, :root[data-motion="reduced"] .vbar b, :root[data-motion="reduced"] .mb-t b { animation: none !important; }
+:root[data-motion="reduced"] .bubble { transition: none; }

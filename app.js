@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '4.1';
+const APP_VERSION = '5.0';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -40,12 +40,12 @@ const SALLE_TYPES =['Push', 'Pull', 'Leg day', 'Full body', 'Haut du corps', 'Ba
 /* Catalogue : groupe -> exercices. Suffixe « | pdc », « | pdc sec » ou « | cardio » ; par défaut muscu (charge en kg). */
 const CATALOG = {
   salle: {
-    'Pectoraux': ['Développé couché (barre)', 'Développé couché haltères', 'Développé incliné', 'Développé décliné', 'Presse pectoraux (machine)', 'Pec deck / butterfly', 'Écarté poulie vis-à-vis', 'Dips | pdc'],
+    'Pectoraux': ['Développé couché (barre)', 'Développé couché haltères', 'Développé couché à la Smith', 'Développé incliné', 'Développé décliné', 'Presse pectoraux (machine)', 'Pec deck / butterfly', 'Écarté poulie vis-à-vis', 'Dips | pdc'],
     'Dos': ['Tirage vertical (poulie haute)', 'Tirage horizontal (poulie basse)', 'Rowing barre', 'Rowing haltère', 'Rowing machine', 'Pull-over poulie', 'Tractions | pdc', 'Soulevé de terre', 'Extension lombaires'],
     'Épaules': ['Développé militaire', 'Développé épaules (machine)', 'Élévations latérales', 'Élévations latérales poulie', 'Oiseau (machine reverse fly)', 'Face pull', 'Shrugs'],
     'Biceps': ['Curl barre', 'Curl haltères', 'Curl marteau', 'Curl pupitre', 'Curl poulie'],
     'Triceps': ['Extension triceps poulie', 'Barre au front', 'Extension nuque haltère', 'Dips machine', 'Kickback'],
-    'Jambes': ['Squat', 'Presse à cuisses', 'Hack squat', 'Fentes', 'Leg extension', 'Leg curl allongé', 'Leg curl assis', 'Soulevé de terre roumain', 'Hip thrust', 'Adducteurs (machine)', 'Abducteurs (machine)', 'Mollets debout', 'Mollets assis'],
+    'Jambes': ['Squat', 'Squat à la Smith', 'Presse à cuisses', 'Hack squat', 'Fentes', 'Leg extension', 'Leg curl allongé', 'Leg curl assis', 'Soulevé de terre roumain', 'Hip thrust', 'Hip thrust (machine)', 'Adducteurs (machine)', 'Abducteurs (machine)', 'Mollets debout', 'Mollets assis'],
     'Abdos': ['Crunch machine', 'Crunch poulie', 'Relevé de jambes | pdc', 'Gainage | pdc sec', 'Rotations russes | pdc'],
     'Cardio': ['Tapis de course | cardio', 'Vélo | cardio', 'Rameur | cardio', 'Elliptique | cardio', 'Stairmaster | cardio'],
   },
@@ -59,6 +59,54 @@ const CATALOG = {
     'Activités': ['Course | cardio', 'Fractionné | cardio', 'Vélo | cardio', 'Marche rapide | cardio', 'Randonnée | cardio', 'Natation | cardio'],
   },
 };
+/* ---------- Profil sportif ---------- */
+const GOALS = {
+  muscle: { e: '💪', t: 'Prendre du muscle', s: 'Séries de 8 à 12 reps', reps: 10, rest: 90 },
+  force: { e: '🏋️', t: 'Gagner en force', s: 'Charges lourdes, 3 à 6 reps', reps: 5, rest: 150 },
+  perte: { e: '🔥', t: 'Perdre du poids', s: 'Séances dynamiques, repos courts', reps: 12, rest: 60 },
+  forme: { e: '🌿', t: 'Être en forme', s: 'Bouger régulièrement, sans pression', reps: 12, rest: 75 },
+  endurance: { e: '🏃', t: 'Endurance', s: 'Plus de reps, cardio', reps: 15, rest: 45 },
+};
+const LEVELS = {
+  debutant: { t: 'Débutant', s: 'Moins de 6 mois de pratique', sets: 3 },
+  inter: { t: 'Intermédiaire', s: '6 mois à 2 ans', sets: 4 },
+  confirme: { t: 'Confirmé', s: 'Plus de 2 ans', sets: 4 },
+};
+const PLACES = {
+  salle: { e: '🏋️', t: 'En salle de sport' },
+  maison: { e: '🏠', t: 'À la maison' },
+  mixte: { e: '🔁', t: 'Les deux' },
+  exterieur: { e: '🌳', t: 'Surtout dehors (course, vélo…)' },
+};
+/* Enseignes : aucune ne publie la liste exacte de ses machines (ça varie selon le club).
+   On part d'une liste « équipement courant » que l'utilisateur ajuste dans Profil > Ma salle. */
+const RARE = ['Hack squat', 'Hip thrust (machine)', 'Stairmaster', 'Leg curl allongé', 'Oiseau (machine reverse fly)'];
+const GYMS = {
+  basicfit: { t: 'Basic-Fit', minus: ['Hack squat', 'Hip thrust (machine)'] },
+  fitnesspark: { t: 'Fitness Park', minus: [] },
+  orangebleue: { t: "L'Orange Bleue", minus: RARE },
+  keepcool: { t: 'Keepcool', minus: RARE },
+  onair: { t: 'On Air', minus: [] },
+  neoness: { t: 'Neoness', minus: ['Hack squat', 'Hip thrust (machine)'] },
+  autre: { t: 'Autre salle', minus: RARE },
+};
+const profile = () => db.profile || {};
+const hasGym = () => ['salle', 'mixte'].includes(profile().place) && profile().gym && profile().gym !== 'none';
+function gymLabel() {
+  const p = profile();
+  if (!p.gym || p.gym === 'none') return 'Pas d\'abonnement';
+  if (p.gym === 'autre') return [p.gymName || 'Autre salle', p.gymCity].filter(Boolean).join(' · ');
+  return (GYMS[p.gym]?.t || '') + (p.gymCity ? ' · ' + p.gymCity : '');
+}
+const allSalleItems = () => Object.values(CATALOG.salle).flat().map(s => parseItem(s).name);
+/* Machines disponibles dans la salle de l'utilisateur (null = pas de salle renseignée) */
+function gymMachines() {
+  const p = profile();
+  if (!hasGym()) return null;
+  if (Array.isArray(p.machines)) return new Set(p.machines);
+  const minus = GYMS[p.gym]?.minus || RARE;
+  return new Set(allSalleItems().filter(n => !minus.includes(n)));
+}
 /* Groupes mis en avant selon le type de séance salle */
 const FOCUS = {
   'Push': ['Pectoraux', 'Épaules', 'Triceps'], 'Pull': ['Dos', 'Biceps'], 'Leg day': ['Jambes', 'Abdos'],
@@ -69,12 +117,18 @@ function parseItem(s) {
   const type = tag.startsWith('cardio') ? 'cardio' : tag.startsWith('pdc') ? 'pdc' : 'muscu';
   return { name, type, unit: tag.includes('sec') ? 'sec' : 'reps' };
 }
+/* Valeurs proposées selon l'objectif et le niveau du profil */
 function exFromItem(s) {
   const { name, type, unit } = parseItem(s), cardio = type === 'cardio';
+  const p = profile(), goal = GOALS[p.goal], level = LEVELS[p.level];
+  const sets = level ? level.sets : (type === 'muscu' ? 4 : 3);
+  const reps = unit === 'sec' ? (p.goal === 'endurance' ? 45 : 30)
+    : type === 'muscu' ? (goal ? goal.reps : 10)
+    : (['perte', 'endurance'].includes(p.goal) ? 20 : 15);
   return {
     id: uid(), name, type, unit,
-    sets: cardio ? null : (type === 'muscu' ? 4 : 3), reps: cardio ? null : (unit === 'sec' ? 30 : type === 'muscu' ? 10 : 15),
-    kg: null, km: cardio ? 5 : null, min: cardio ? 30 : null, rest: null,
+    sets: cardio ? null : sets, reps: cardio ? null : reps,
+    kg: null, km: cardio ? (p.goal === 'endurance' ? 8 : 5) : null, min: cardio ? (p.goal === 'endurance' ? 45 : 30) : null, rest: null,
   };
 }
 
@@ -125,7 +179,7 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="no
 
 /* ---------- Données locales ---------- */
 function emptyDb() {
-  return { version: 3, exClean: true, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3, goalAuto: true, theme: 'auto', palette: 'graphite' }, settingsU: 0, body: [] };
+  return { version: 3, exClean: true, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3, goalAuto: true, theme: 'auto', palette: 'graphite' }, settingsU: 0, body: [], profile: null };
 }
 const V1_EXAMPLES = {
   'Push (pecs, épaules, triceps)': ['Développé couché', 'Développé incliné haltères', 'Écarté poulie vis-à-vis', 'Élévations latérales', 'Extension triceps poulie'],
@@ -219,6 +273,7 @@ function mergeDb(a, b) {
   out.programs = mergeList(a.programs, b.programs, deleted);
   out.sessions = mergeList(a.sessions, b.sessions, deleted);
   out.body = mergeList(a.body, b.body, deleted);
+  out.profile = ((b.profile && b.profile.u) || 0) > ((a.profile && a.profile.u) || 0) ? b.profile : (a.profile || b.profile || null);
   out.activeClearedAt = Math.max(a.activeClearedAt || 0, b.activeClearedAt || 0);
   let act = [a.active, b.active].filter(Boolean).sort((x, y) => (y.u || 0) - (x.u || 0))[0] || null;
   if (act && (out.activeClearedAt >= (act.u || 0) || out.sessions.some(s => s.id === act.id))) act = null;
@@ -350,6 +405,7 @@ const ui = {
 };
 if (db.active) ui.view = 'session';
 else if (cloudOn() && !auth && !welcomed()) ui.view = 'auth';
+else if (!db.profile && !db.programs.length && !db.sessions.length) { ui.ob = { data: {}, i: 0 }; ui.view = 'onboard'; }
 
 /* ---------- Historique & mesures ---------- */
 function historyOf(name) {
@@ -455,6 +511,8 @@ function applyTheme() {
   const t = db.settings.theme || 'auto', root = document.documentElement;
   if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
   root.setAttribute('data-palette', db.settings.palette || 'graphite');
+  root.style.fontSize = { l: '112.5%', xl: '125%' }[db.settings.textSize] || '100%';
+  if (db.settings.motion === 'reduced') root.setAttribute('data-motion', 'reduced'); else root.removeAttribute('data-motion');
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', dark ? '#0d0a14' : '#f7f3fb');
@@ -462,7 +520,9 @@ function applyTheme() {
 function render(dir) {
   applyTheme();
   let html;
-  if (ui.view === 'auth' && cloudOn()) html = viewAuth();
+  if (ui.view === 'onboard' && ui.ob) html = viewOnboard();
+  else if (ui.view === 'gym' && hasGym()) html = viewGym();
+  else if (ui.view === 'auth' && cloudOn()) html = viewAuth();
   else if (ui.view === 'session' && db.active) html = viewSession();
   else if (ui.view === 'editProgram' && ui.draft) html = viewEditor();
   else if (ui.view === 'sessionDetail' && db.sessions.some(s => s.id === ui.sessionId)) html = viewSessionDetail();
@@ -498,7 +558,12 @@ function goalCard() {
 /* ----- Accueil ----- */
 function viewToday() {
   const t = todayIdx(), d = ui.day;
-  let h = `<header class="top"><p class="eyebrow">${cap(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Aujourd'hui</h1></header>`;
+  const pn = profile().name;
+  let h = `<header class="top"><p class="eyebrow">${pn ? 'Salut ' + esc(pn) + ' 👋 · ' : ''}${pn ? new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : cap(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Aujourd'hui</h1></header>`;
+  if (!profile().done) {
+    h += `<button class="card ob-invite" data-act="openOnboard">
+      <span class="ob-e">👋</span><span class="ob-txt"><strong>Personnalise ton appli</strong><span>Objectif, niveau, ta salle… 1 minute</span></span>${ic('chevron')}</button>`;
+  }
   if (db.active) {
     const a = db.active, n = a.exercises.filter(e => e.done).length;
     h += `<button class="card resume" data-act="resume">
@@ -682,6 +747,101 @@ function steppersFor(e, scope, i) {
 }
 
 /* ----- Séances (programmes) ----- */
+/* =========================================================
+   Questionnaire d'accueil (profil sportif) — tout est facultatif
+   ========================================================= */
+const OB_STEPS = () => {
+  const d = (ui.ob && ui.ob.data) || {};
+  return ['hello', 'goal', 'level', 'place', ...(['salle', 'mixte'].includes(d.place) ? ['gym'] : []), 'body', 'days', 'recap'];
+};
+function startOnboarding(step) {
+  const steps = OB_STEPS();
+  void steps;
+  const data = JSON.parse(JSON.stringify(db.profile || {}));
+  const lastW = [...(db.body || [])].sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  if (lastW && data.consent) data.weight = lastW.kg;
+  ui.ob = { data, i: 0 };
+  if (step) ui.ob.i = Math.max(0, OB_STEPS().indexOf(step));
+  ui.view = 'onboard'; render(); toTop();
+}
+function obOption(f, k, o) {
+  const on = ui.ob.data[f] === k;
+  return `<button class="ob-opt ${on ? 'on' : ''}" data-act="obPick" data-f="${f}" data-v="${k}">
+    ${o.e ? `<span class="ob-e">${o.e}</span>` : ''}<span class="ob-txt"><strong>${esc(o.t)}</strong>${o.s ? `<span>${esc(o.s)}</span>` : ''}</span>
+    <span class="ob-check">${on ? ic('check') : ''}</span></button>`;
+}
+function viewOnboard() {
+  const steps = OB_STEPS(), i = Math.min(ui.ob.i, steps.length - 1), step = steps[i], d = ui.ob.data;
+  let h = `<div class="ob">
+    <div class="ob-top">
+      ${i > 0 ? `<button class="back" data-act="obBack">‹ Retour</button>` : '<span></span>'}
+      <button class="btn text" data-act="obSkip">${db.profile && db.profile.done ? 'Fermer' : 'Plus tard'}</button>
+    </div>
+    <div class="ob-dots">${steps.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>`;
+  if (step === 'hello') {
+    h += `<h1>Personnalisons ton appli</h1>
+      <p class="muted">Quelques questions, moins d'une minute. Tout est facultatif et chaque réponse change ce que l'appli te propose.</p>
+      <label class="lbl" for="obName">Ton prénom (pour te saluer)</label>
+      <input id="obName" class="txt big" data-ob="name" value="${esc(d.name || '')}" placeholder="Facultatif" autocomplete="given-name">`;
+  } else if (step === 'goal') {
+    h += `<h1>Ton objectif principal ?</h1><p class="muted">Il règle le nombre de répétitions et le temps de repos proposés.</p>
+      <div class="ob-list">${Object.entries(GOALS).map(([k, o]) => obOption('goal', k, o)).join('')}</div>`;
+  } else if (step === 'level') {
+    h += `<h1>Ton niveau ?</h1><p class="muted">Il règle le nombre de séries proposées.</p>
+      <div class="ob-list">${Object.entries(LEVELS).map(([k, o]) => obOption('level', k, o)).join('')}</div>`;
+  } else if (step === 'place') {
+    h += `<h1>Tu t'entraînes où ?</h1><p class="muted">Pour te proposer les bons exercices.</p>
+      <div class="ob-list">${Object.entries(PLACES).map(([k, o]) => obOption('place', k, o)).join('')}</div>`;
+  } else if (step === 'gym') {
+    h += `<h1>Ta salle de sport ?</h1><p class="muted">Les machines de ta salle seront proposées en premier quand tu crées une séance.</p>
+      <div class="ob-list">${Object.entries(GYMS).map(([k, o]) => obOption('gym', k, { t: o.t })).join('')}${obOption('gym', 'none', { t: "Je n'ai pas d'abonnement" })}</div>
+      ${d.gym === 'autre' ? `<label class="lbl" for="obGymName">Nom de ta salle</label><input id="obGymName" class="txt" data-ob="gymName" value="${esc(d.gymName || '')}" placeholder="ex. Club Atlas">` : ''}
+      ${d.gym && d.gym !== 'none' ? `<label class="lbl" for="obGymCity">Ville (facultatif)</label><input id="obGymCity" class="txt" data-ob="gymCity" value="${esc(d.gymCity || '')}" placeholder="ex. Tarbes">` : ''}`;
+  } else if (step === 'body') {
+    h += `<h1>Quelques infos sur toi</h1>
+      <p class="muted">Ton âge, ta taille et ton poids servent à suivre ton évolution. Ce sont des données de santé : elles restent sur ton téléphone (et sur ton compte si tu en crées un), ne sont jamais partagées et tu peux les effacer à tout moment dans le Profil.</p>
+      <label class="consent"><input type="checkbox" data-ob="consent" ${d.consent ? 'checked' : ''}><span>J'accepte que l'appli enregistre ces informations pour personnaliser mon suivi.</span></label>
+      ${d.consent ? `<div class="grid2">
+        <div><label class="lbl" for="obBirth">Année de naissance</label><input id="obBirth" class="txt" inputmode="numeric" data-ob="birthYear" value="${esc(d.birthYear || '')}" placeholder="ex. 2006"></div>
+        <div><label class="lbl" for="obHeight">Taille (cm)</label><input id="obHeight" class="txt" inputmode="numeric" data-ob="height" value="${esc(d.height || '')}" placeholder="ex. 178"></div>
+      </div>
+      <label class="lbl" for="obWeight">Poids actuel (kg)</label><input id="obWeight" class="txt" inputmode="decimal" data-ob="weight" value="${esc(fmtIn(d.weight))}" placeholder="ex. 72,5">` : '<p class="muted small">Tu peux aussi passer cette étape.</p>'}`;
+  } else if (step === 'days') {
+    const n = d.days || 3;
+    h += `<h1>Combien de séances par semaine ?</h1><p class="muted">Ce sera ton objectif de la semaine (l'anneau de l'accueil). Les repères santé conseillent de travailler chaque muscle au moins 2 fois par semaine.</p>
+      <div class="ob-days">${[1, 2, 3, 4, 5, 6].map(k => `<button class="${n === k ? 'on' : ''}" data-act="obDays" data-v="${k}">${k}</button>`).join('')}</div>`;
+  } else if (step === 'recap') {
+    const g = GOALS[d.goal], l = LEVELS[d.level];
+    const rows = [
+      ['Séries × reps proposées', `${l ? l.sets : 4} × ${g ? g.reps : 10}`, `${l ? l.t : 'niveau non renseigné'} · ${g ? g.t.toLowerCase() : 'objectif non renseigné'}`],
+      ['Repos entre les exercices', `${g ? g.rest : db.settings.rest} s`, g ? `adapté à « ${g.t.toLowerCase()} »` : 'valeur actuelle'],
+      ['Objectif de la semaine', `${d.days || 3} séance${(d.days || 3) > 1 ? 's' : ''}`, 'remplace par tes jours programmés quand ta semaine est remplie'],
+    ];
+    if (['salle', 'mixte'].includes(d.place) && d.gym && d.gym !== 'none') rows.push(['Machines', d.gym === 'autre' ? (d.gymName || 'Ta salle') : GYMS[d.gym].t, 'proposées en premier — ajustables dans Profil › Ma salle']);
+    if (d.place === 'maison') rows.push(['Exercices', 'À la maison', 'poids du corps proposés en premier']);
+    h += `<h1>${d.name ? esc(d.name) + ', c' : 'C'}e que ça change</h1>
+      <div class="list">${rows.map(([t, v, s]) => `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">${t}</span><span class="lrow-s">${esc(s)}</span></span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      <p class="muted small">Tu pourras tout modifier dans le Profil.</p>`;
+  }
+  const last = step === 'recap', autoNext = ['goal', 'level', 'place', 'gym', 'days'].includes(step) && !d[step];
+  h += `<div class="footer-actions"><button class="btn primary" data-act="${last ? 'obFinish' : 'obNext'}">${last ? "C'est parti 🚀" : autoNext ? 'Passer' : 'Suivant'}</button></div></div>`;
+  return h;
+}
+/* Écran « Ma salle » : cocher les machines présentes */
+function viewGym() {
+  const p = profile(), have = gymMachines() || new Set();
+  let h = `<header class="top"><button class="back" data-act="closeGym">‹ Profil</button><h1>Ma salle</h1>
+    <p class="muted">${esc(gymLabel())}</p></header>
+    <div class="card"><p class="small">Les enseignes ne publient pas la liste exacte de leurs machines : elle change d'un club à l'autre. On part d'une liste d'équipement courant ; <strong>décoche ce qui n'existe pas dans ta salle</strong> et coche ce qui manque.</p>
+      <div class="row"><button class="btn small" data-act="gymAll">Tout cocher</button><button class="btn small" data-act="gymReset">Liste type ${esc(GYMS[p.gym]?.t || '')}</button><button class="btn small" data-act="gymEdit">Changer de salle</button></div></div>`;
+  for (const [g, items] of Object.entries(CATALOG.salle)) {
+    h += `<p class="cat-t">${esc(g)}</p><div class="chips tight">${items.map(s => {
+      const n = parseItem(s).name, on = have.has(n);
+      return `<button class="chip ${on ? 'on' : ''}" data-act="gymToggle" data-n="${esc(n)}" aria-pressed="${on}">${on ? '✓ ' : ''}${esc(n)}</button>`;
+    }).join('')}</div>`;
+  }
+  return h;
+}
 const progLabel = p => `${CATS[p.cat]?.e || ''} ${esc(p.name)}`;
 function viewPrograms() {
   let h = `<header class="top"><h1>Séances</h1><p class="muted">Ta semaine type : touche un jour pour le programmer.</p></header>`;
@@ -733,15 +893,24 @@ function viewEditor() {
     if (p.exercises.length) h += `<div class="list">${p.exercises.map((e, i) => listRow({ act: 'editExDraft', attrs: `data-i="${i}"`, title: esc(e.name), sub: planText(e) })).join('')}</div>`;
     const have = new Set(p.exercises.map(e => nkey(e.name)));
     const { groups, shown, hidden } = catalogFor(p);
-    h += `<div class="card catalog"><p class="cat-head">${p.cat === 'salle' ? 'Machines et exercices' : p.cat === 'maison' ? 'Exercices à la maison' : 'Activités'} — touche pour ajouter</p>`;
+    const mine = p.cat === 'salle' ? gymMachines() : null; // machines de la salle de l'utilisateur
+    let notInGym = 0;
+    h += `<div class="card catalog"><p class="cat-head">${p.cat === 'salle' ? (mine ? `📍 Machines de ta salle (${esc(gymLabel())})` : 'Machines et exercices') : p.cat === 'maison' ? 'Exercices à la maison' : 'Activités'} — touche pour ajouter</p>`;
     for (const g of shown) {
-      h += `<p class="cat-t">${esc(g)}</p><div class="chips tight">${groups[g].map(s => {
-        const { name } = parseItem(s), added = have.has(nkey(name));
-        return `<button class="chip ${added ? 'on' : ''}" data-act="${added ? 'noop' : 'pickItem'}" data-item="${esc(s)}">${added ? '✓ ' : ''}${esc(name)}</button>`;
+      const items = groups[g].filter(s => {
+        const ok = !mine || ui.allMachines || mine.has(parseItem(s).name) || have.has(nkey(parseItem(s).name));
+        if (!ok) notInGym++;
+        return ok;
+      });
+      if (!items.length) continue;
+      h += `<p class="cat-t">${esc(g)}</p><div class="chips tight">${items.map(s => {
+        const { name } = parseItem(s), added = have.has(nkey(name)), absent = mine && !mine.has(name);
+        return `<button class="chip ${added ? 'on' : ''} ${absent && !added ? 'absent' : ''}" data-act="${added ? 'noop' : 'pickItem'}" data-item="${esc(s)}">${added ? '✓ ' : ''}${esc(name)}</button>`;
       }).join('')}</div>`;
     }
-    if (hidden) h += `<button class="btn text block" data-act="toggleMachines">Voir toutes les machines (${hidden} groupes de plus)</button>`;
-    else if (ui.allMachines && p.cat === 'salle' && FOCUS[p.name.trim()]) h += `<button class="btn text block" data-act="toggleMachines">Afficher seulement ${esc(p.name.trim())}</button>`;
+    if (mine && notInGym && !ui.allMachines) h += `<p class="muted small">${notInGym} machine${notInGym > 1 ? 's' : ''} masquée${notInGym > 1 ? 's' : ''} car pas cochée${notInGym > 1 ? 's' : ''} dans ta salle.</p>`;
+    if (hidden || (mine && notInGym && !ui.allMachines)) h += `<button class="btn text block" data-act="toggleMachines">Voir toutes les machines${hidden ? ` (${hidden} groupes de plus)` : ''}</button>`;
+    else if (ui.allMachines && p.cat === 'salle' && (FOCUS[p.name.trim()] || mine)) h += `<button class="btn text block" data-act="toggleMachines">${mine ? 'Afficher seulement ma salle' : 'Afficher seulement ' + esc(p.name.trim())}</button>`;
     h += `<button class="btn text block" data-act="addExDraft">Mon exercice n'est pas dans la liste</button></div>`;
   }
   if (!isNew) h += `<button class="btn text danger block" data-act="deleteProgram">Supprimer ${p.cat === 'repos' ? 'les jours de repos' : 'cette séance'}</button>`;
@@ -854,7 +1023,7 @@ function viewStats() {
   const week = weekCount();
   h += `<div class="kpis"><div class="kpi"><strong>${week}</strong><span>séance${week > 1 ? 's' : ''} cette semaine</span></div>
     <div class="kpi"><strong>${month}</strong><span>séance${month > 1 ? 's' : ''} ce mois-ci</span></div></div>`;
-  if (db.sessions.length) h += volumeCard();
+  if (db.sessions.length) h += volumeCard() + musclesCard();
   h += bodyCard();
   const labels = new Map();
   for (const s of db.sessions) for (const e of s.exercises) labels.set(nkey(e.name), e.name);
@@ -897,6 +1066,24 @@ function volumeCard() {
     <div class="vbars">${weeks.map((w, i) => `<div class="vbar ${i === 7 ? 'cur' : ''}" title="${fmtNum(Math.round(w.v))} kg · ${w.n} séance(s)">
       <b style="height:${Math.round(w.v / max * 100)}%; animation-delay:${i * 40}ms"></b><span>${i === 7 ? 'Cette' : fmtShort(new Date(w.t).toISOString())}</span></div>`).join('')}</div>
     <p class="muted small">Volume = séries × reps × kg, toutes séances de muscu confondues.</p></div>`;
+}
+/* Séries par muscle cette semaine (repère ACSM 2026 : ~10 séries/semaine/muscle pour prendre du muscle) */
+function musclesCard() {
+  const ws = weekStart(new Date()), counts = new Map();
+  for (const s of db.sessions) {
+    if (new Date(s.start) < ws) continue;
+    for (const e of s.exercises) {
+      const g = GROUP_OF.get(nkey(e.name));
+      if (!g || e.type === 'cardio' || g === 'Cardio' || g === 'Activités') continue;
+      counts.set(g, (counts.get(g) || 0) + (e.sets || 0));
+    }
+  }
+  const main = ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Jambes', 'Abdos'];
+  const groups = [...new Set([...main, ...counts.keys()])];
+  const target = 10;
+  return `<div class="card"><div class="row-between"><strong>Muscles cette semaine</strong><span class="muted small">séries</span></div>
+    <div class="mbars">${groups.map(g => { const n = counts.get(g) || 0; return `<div class="mbar"><span class="mb-l">${esc(g)}</span><span class="mb-t"><b style="width:${Math.min(100, n / target * 100)}%"></b></span><span class="mb-v ${n >= target ? 'ok' : ''}">${n}${n >= target ? ' ✓' : ''}</span></div>`; }).join('')}</div>
+    <p class="muted small">Repère : environ ${target} séries par muscle et par semaine pour prendre du muscle (ACSM 2026). Pas besoin d'aller à l'échec.</p></div>`;
 }
 /* Poids du corps : saisie + courbe */
 function bodyCard() {
@@ -962,11 +1149,23 @@ function viewProfile() {
       <div class="acc-s">Les comptes arrivent bientôt : tes données restent sur cet appareil.</div></div></div>`;
   }
   h += goalCard();
+  const pr = profile();
+  const age = pr.birthYear ? new Date().getFullYear() - pr.birthYear : null;
+  h += `<h2>Mon profil sportif</h2><div class="list">
+    ${listRow({ act: 'openOnboard', title: pr.done ? `${GOALS[pr.goal]?.e || '🎯'} ${GOALS[pr.goal]?.t || 'Objectif non renseigné'}` : '👋 Compléter mon profil', sub: pr.done ? [LEVELS[pr.level]?.t, PLACES[pr.place]?.t, pr.days ? pr.days + ' séances / semaine' : ''].filter(Boolean).join(' · ') || 'Modifier' : 'Objectif, niveau, salle… 1 minute' })}
+    ${hasGym() ? listRow({ act: 'openGym', title: '📍 Ma salle et ses machines', sub: esc(gymLabel()) + ` · ${gymMachines().size} machines cochées` }) : ''}
+    ${pr.consent && (age || pr.height) ? `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">Infos perso</span><span class="lrow-s">${[age ? age + ' ans' : '', pr.height ? pr.height + ' cm' : ''].filter(Boolean).join(' · ')}</span></span></div>` : ''}
+    ${pr.done ? listRow({ act: 'clearProfile', title: 'Effacer mes infos perso', sub: 'Profil, âge, taille et poids', cls: 'danger' }) : ''}
+  </div>`;
   const th = db.settings.theme || 'auto', pal = db.settings.palette || 'graphite';
   h += `<h2>Apparence</h2><div class="list">
     <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Mode</span><span class="lrow-s">${th === 'auto' ? 'suit ton téléphone' : th === 'dark' ? 'toujours sombre' : 'toujours clair'}</span></span>
       <div class="seg" role="group" aria-label="Mode">${[['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, v]) => `<button class="${th === k ? 'on' : ''}" data-act="setTheme" data-v="${k}">${v}</button>`).join('')}</div></div>
     <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Couleurs</span><span class="lrow-s">s'applique à toute l'appli</span></span></div>
+    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Taille du texte</span><span class="lrow-s">plus lisible à la salle</span></span>
+      <div class="seg" role="group" aria-label="Taille du texte">${[['m', 'A'], ['l', 'A+'], ['xl', 'A++']].map(([k, v]) => `<button class="${(db.settings.textSize || 'm') === k ? 'on' : ''}" data-act="setPref" data-k="textSize" data-v="${k}" aria-label="Texte ${v}">${v}</button>`).join('')}</div></div>
+    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Animations</span><span class="lrow-s">confettis, transitions…</span></span>
+      <div class="seg" role="group" aria-label="Animations">${[['auto', 'Normales'], ['reduced', 'Réduites']].map(([k, v]) => `<button class="${(db.settings.motion || 'auto') === k ? 'on' : ''}" data-act="setPref" data-k="motion" data-v="${k}">${v}</button>`).join('')}</div></div>
     <div class="palettes">${PALETTES.map(p => `<button class="pal ${pal === p.id ? 'on' : ''}" data-act="setPalette" data-v="${p.id}" aria-pressed="${pal === p.id}">
       <i style="background:linear-gradient(135deg,${p.c[0]},${p.c[1]} 55%,${p.c[2]})">${pal === p.id ? '<span style="color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)">✓</span>' : ''}</i>${p.t}</button>`).join('')}</div>
   </div>`;
@@ -1240,6 +1439,62 @@ const actions = {
   },
   syncNow() { sync(); },
   setTheme(d) { db.settings.theme = d.v; db.settingsU = now(); saveDb(); render(); },
+  /* ----- Questionnaire ----- */
+  openOnboard() { startOnboarding(); },
+  obPick(d) {
+    ui.ob.data[d.f] = d.v;
+    if (d.f === 'gym' && d.v === 'autre') { render(); return; }
+    if (d.f === 'gym' && d.v !== 'none') { render(); return; } // laisser saisir la ville
+    actions.obNext();
+  },
+  obDays(d) { ui.ob.data.days = +d.v; actions.obNext(); },
+  obNext() { ui.ob.i = Math.min(ui.ob.i + 1, OB_STEPS().length - 1); render(); toTop(); },
+  obBack() { ui.ob.i = Math.max(0, ui.ob.i - 1); render(); toTop(); },
+  obSkip() {
+    if (!db.profile) { db.profile = { skipped: true, u: now() }; saveDb(); }
+    ui.ob = null; ui.view = null; ui.tab = 'today'; render();
+  },
+  obFinish() {
+    const d = { ...ui.ob.data }, prev = db.profile || {};
+    if (prev.gym !== d.gym) delete d.machines; // nouvelle salle : repartir de sa liste type
+    const w = num(d.weight);
+    delete d.weight; delete d.skipped;
+    if (!d.consent) { delete d.birthYear; delete d.height; }
+    else {
+      d.birthYear = num(d.birthYear); d.height = num(d.height);
+      if (w && w >= 25 && w <= 350) {
+        db.body = db.body || [];
+        const ex = db.body.find(b => sameDay(b.date, new Date()));
+        if (ex) { ex.kg = w; ex.u = now(); } else db.body.push({ id: uid(), u: now(), date: new Date().toISOString(), kg: w });
+      }
+    }
+    d.done = true; d.u = now();
+    db.profile = d;
+    if (GOALS[d.goal]) db.settings.rest = GOALS[d.goal].rest;
+    if (d.days) db.settings.weeklyGoal = d.days;
+    db.settingsU = now();
+    saveDb(); ui.ob = null; ui.view = null; ui.tab = 'today'; render(); toTop();
+    toast(d.name ? `C'est prêt, ${d.name} 💪` : "C'est prêt 💪");
+  },
+  clearProfile() {
+    if (!confirm('Effacer tes infos perso (profil, âge, taille et historique de poids) ? Tes séances et ton historique d\'entraînement sont conservés.')) return;
+    const t = now();
+    (db.body || []).forEach(b => { db.deleted[b.id] = t; });
+    db.body = [];
+    db.profile = { skipped: true, u: t };
+    saveDb(); render(); toast('Infos perso effacées');
+  },
+  /* ----- Ma salle ----- */
+  openGym() { ui.view = 'gym'; render(); toTop(); },
+  closeGym() { ui.view = null; ui.tab = 'profile'; render(); },
+  gymToggle(d) {
+    const set = gymMachines();
+    if (set.has(d.n)) set.delete(d.n); else set.add(d.n);
+    db.profile.machines = [...set]; db.profile.u = now(); saveDb(); render();
+  },
+  gymAll() { db.profile.machines = allSalleItems(); db.profile.u = now(); saveDb(); render(); },
+  gymReset() { delete db.profile.machines; db.profile.u = now(); saveDb(); render(); toast('Liste type rétablie'); },
+  gymEdit() { startOnboarding('gym'); },
   addBody() {
     const v = num($('#bwInput').value);
     if (v == null || v < 25 || v > 350) { toast('Indique un poids valide en kg'); return; }
@@ -1253,6 +1508,7 @@ const actions = {
     if (d.v === 'manual' && db.settings.goalAuto !== false) db.settings.weeklyGoal = weeklyGoal();
     db.settings.goalAuto = d.v === 'auto'; db.settingsU = now(); saveDb(); render();
   },
+  setPref(d) { if (!['textSize', 'motion'].includes(d.k)) return; db.settings[d.k] = d.v; db.settingsU = now(); saveDb(); render(); },
   setPalette(d) { db.settings.palette = d.v; db.settingsU = now(); saveDb(); render(); },
   logout() {
     if (!confirm('Se déconnecter ? Tes données restent sur cet appareil.')) return;
@@ -1308,6 +1564,7 @@ document.addEventListener('input', ev => {
     afterScopeChange(d.scope);
     return;
   }
+  if (d.ob && ui.ob) { if (t.type !== 'checkbox') ui.ob.data[d.ob] = t.value; return; }
   if (d.draft && ui.draft) { ui.draft[d.draft] = t.value; return; }
   if (d.sheet && ui.sheet) { ui.sheet.ex[d.sheet] = t.value; }
 });
@@ -1315,6 +1572,7 @@ document.addEventListener('input', ev => {
 document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.tagName === 'SELECT' && t.dataset.stat) { ui.statKey = t.value; render(); }
+  if (t.type === 'checkbox' && t.dataset.ob && ui.ob) { ui.ob.data[t.dataset.ob] = t.checked; render(); }
   // Après saisie d'une valeur de séance, rafraîchir l'affichage (ligne résumé)
   if (t.dataset.scope === 'act' && !t.dataset.text) render();
   // Nom de séance tapé à la main : vérifier s'il existe déjà un autre jour
@@ -1446,7 +1704,7 @@ setInterval(() => { if (document.visibilityState === 'visible') scheduleSync(0);
 
 /* ---------- Confettis ---------- */
 function confetti() {
-  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (db.settings.motion === 'reduced' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
   const wrap = document.createElement('div');
   wrap.className = 'confetti';
   const cs = getComputedStyle(document.documentElement);
