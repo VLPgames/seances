@@ -124,16 +124,20 @@ button.card { cursor: pointer; font: inherit; }
 .link { background: none; border: 0; color: var(--accent); font: 600 .9rem var(--font); padding: 6px 0 6px 8px; cursor: pointer; }
 
 /* Semaine */
-.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 14px 0 0; align-items: start; }
+/* Bande des jours : 7 cases strictement identiques */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 14px 0 0; align-items: stretch; }
 .week button {
-  height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border: 1px solid var(--line); background: var(--surface); color: var(--text);
-  border-radius: 12px; padding: 0; font: 500 .8rem var(--font); cursor: pointer;
+  -webkit-appearance: none; appearance: none; margin: 0; box-sizing: border-box;
+  height: 46px; width: 100%; padding: 0; display: grid; place-items: center;
+  line-height: 1; vertical-align: top; position: static; transform: none;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 12px; font: 600 .8rem var(--font); cursor: pointer;
 }
-.week button.today { font-weight: 700; }
-.week button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.week .dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin: 4px auto 0; opacity: .7; }
-.week .dot.empty { opacity: 0; }
+.week button .ic { width: 20px; height: 20px; stroke-width: 2.6; }
+.week button.today { border-color: var(--muted); }
+.week button.done { background: var(--ok); border-color: var(--ok); color: #fff; }
+.week button.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.week button.on:not(.done) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 /* Plan d'une séance (accueil) */
 .plan { list-style: none; padding: 0; margin: 12px 0 4px; }
@@ -201,6 +205,32 @@ select.txt { appearance: none; background-image: linear-gradient(45deg, transpar
 .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .days button { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 12px; padding: 10px 0; font: 500 .82rem var(--font); cursor: pointer; }
 .days button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.chips.tight { margin-top: 0; }
+.cat-t { font-size: .85rem; font-weight: 600; color: var(--muted); margin: 18px 0 8px; }
+.todo { color: var(--accent); font-weight: 600; }
+.todo-card h3, .rest h3 { margin-bottom: 4px; }
+.explain { font-size: .85rem; color: var(--muted); margin: 10px 0 0; }
+.explain strong { color: var(--accent); }
+.lrow-s.up { color: var(--ok); font-weight: 600; }
+
+/* Calendrier (historique) */
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-head .icon-btn { font-size: 1.6rem; line-height: 1; width: 40px; height: 40px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }
+.cal-wd { text-align: center; font-size: .75rem; color: var(--muted); padding: 4px 0; }
+.cal-d {
+  -webkit-appearance: none; appearance: none; margin: 0;
+  height: 54px; padding: 4px 2px; border-radius: 10px; border: 1px solid transparent;
+  background: var(--bg); color: var(--text); font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; overflow: hidden;
+}
+.cal-d:disabled { cursor: default; opacity: 1; }
+.cal-n { font-size: .85rem; font-weight: 600; }
+.cal-nm { font-size: .58rem; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-d.today { border-color: var(--muted); }
+.cal-d.done { background: var(--ok); color: #fff; cursor: pointer; }
+.cal-d.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
 
 /* Feuille (bottom sheet) */
 .sheet-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 40; animation: fade .2s ease; }

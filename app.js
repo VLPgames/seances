@@ -20,6 +20,25 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
 const JOURS_COURT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const TYPES = { muscu: 'Muscu', pdc: 'Poids du corps', cardio: 'Cardio' };
 const FEEL = { hard: { e: '😮‍💨', t: 'Trop dur' }, ok: { e: '👌', t: 'Parfait' }, easy: { e: '💪', t: 'Trop facile' } };
+const CATS = {
+  salle: { e: '🏋️', t: 'Salle de sport', s: 'Push, pull, leg day…' },
+  maison: { e: '🏠', t: 'À la maison', s: 'Poids du corps, sans matériel' },
+  exterieur: { e: '🌳', t: 'Extérieur', s: 'Course, vélo, marche…' },
+  repos: { e: '😴', t: 'Repos', s: 'Jour off, rien à faire' },
+};
+const SALLE_TYPES = ['Push', 'Pull', 'Leg day', 'Full body', 'Haut du corps', 'Bas du corps'];
+/* Propositions d'exercices : [nom, type, unité] */
+const SUGGEST = {
+  Push: [['Développé couché', 'muscu'], ['Développé incliné haltères', 'muscu'], ['Développé militaire', 'muscu'], ['Élévations latérales', 'muscu'], ['Écarté poulie', 'muscu'], ['Dips', 'pdc'], ['Extension triceps poulie', 'muscu']],
+  Pull: [['Tractions', 'pdc'], ['Tirage vertical', 'muscu'], ['Rowing barre', 'muscu'], ['Rowing haltère', 'muscu'], ['Face pull', 'muscu'], ['Curl biceps', 'muscu'], ['Curl marteau', 'muscu']],
+  'Leg day': [['Squat', 'muscu'], ['Presse à cuisses', 'muscu'], ['Fentes', 'muscu'], ['Soulevé de terre roumain', 'muscu'], ['Leg curl', 'muscu'], ['Leg extension', 'muscu'], ['Mollets', 'muscu']],
+  'Full body': [['Squat', 'muscu'], ['Développé couché', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Rowing haltère', 'muscu'], ['Gainage', 'pdc', 'sec']],
+  'Haut du corps': [['Développé couché', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Rowing barre', 'muscu'], ['Curl biceps', 'muscu'], ['Extension triceps poulie', 'muscu']],
+  'Bas du corps': [['Squat', 'muscu'], ['Presse à cuisses', 'muscu'], ['Fentes', 'muscu'], ['Leg curl', 'muscu'], ['Mollets', 'muscu']],
+  salle: [['Développé couché', 'muscu'], ['Squat', 'muscu'], ['Tirage vertical', 'muscu'], ['Développé militaire', 'muscu'], ['Curl biceps', 'muscu'], ['Gainage', 'pdc', 'sec']],
+  maison: [['Pompes', 'pdc'], ['Squats', 'pdc'], ['Fentes', 'pdc'], ['Gainage', 'pdc', 'sec'], ['Burpees', 'pdc'], ['Crunchs', 'pdc'], ['Dips sur chaise', 'pdc'], ['Mountain climbers', 'pdc', 'sec']],
+  exterieur: [['Course', 'cardio'], ['Vélo', 'cardio'], ['Marche rapide', 'cardio'], ['Fractionné', 'cardio']],
+};
 
 const now = () => Date.now();
 const uid = () => now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -67,7 +86,14 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="no
 
 /* ---------- Données locales ---------- */
 function emptyDb() {
-  return { version: 2, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3 }, settingsU: 0 };
+  return { version: 3, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3 }, settingsU: 0 };
+}
+function inferCat(p) {
+  const ex = p.exercises || [];
+  if (!ex.length) return 'salle';
+  if (ex.every(e => e.type === 'cardio')) return 'exterieur';
+  if (ex.some(e => e.type === 'muscu')) return 'salle';
+  return 'maison';
 }
 
 /* Conversion d'un exercice V1 (série par série) vers V2 (une ligne) */
@@ -98,6 +124,11 @@ function migrate(d) {
     if (d.active) { d.active.u = d.active.u || 1; d.active.exercises = d.active.exercises.map(e => migrateEntry(e, false)); }
     d.version = 2;
   }
+  d.programs.forEach(p => {
+    if (!p.cat) p.cat = inferCat(p);
+    p.days = (p.days || []).filter(x => Number.isInteger(x) && x >= 0 && x <= 6);
+  });
+  d.version = 3;
   return d;
 }
 function readLocal() {
@@ -126,7 +157,7 @@ function mergeList(a, b, deleted) {
 function mergeDb(a, b) {
   const deleted = { ...(a.deleted || {}) };
   for (const [k, v] of Object.entries(b.deleted || {})) deleted[k] = Math.max(deleted[k] || 0, v);
-  const out = { version: 2, deleted };
+  const out = { version: 3, deleted };
   out.programs = mergeList(a.programs, b.programs, deleted);
   out.sessions = mergeList(a.sessions, b.sessions, deleted);
   out.activeClearedAt = Math.max(a.activeClearedAt || 0, b.activeClearedAt || 0);
@@ -256,6 +287,7 @@ function syncText() {
 const ui = {
   tab: 'today', day: todayIdx(), view: null, draft: null, sheet: null, sessionId: null, statKey: null,
   timer: null, editIdx: null, fbIdx: null, sync: { state: 'idle', at: 0 }, suppressClick: false,
+  cal: null, calSel: null,
 };
 if (db.active) ui.view = 'session';
 else if (cloudOn() && !auth && !welcomed()) ui.view = 'auth';
@@ -405,31 +437,28 @@ function viewToday() {
       <span class="muted small">${n} sur ${a.exercises.length} exercices · commencée à ${fmtTime(a.start)}</span>
       <span class="btn primary block">Reprendre</span></button>`;
   }
-  if (!db.programs.length) {
-    return h + `<div class="card empty">
-      <div class="empty-ic">${ic('dumbbell')}</div>
-      <h3>Crée ta première séance</h3>
-      <p class="muted">Donne-lui un nom, des jours et tes exercices : elle s'affichera ici le bon jour, déjà remplie avec ce que tu as fait la dernière fois.</p>
-      <button class="btn primary block" data-act="newProgram">Créer une séance</button></div>`;
-  }
   h += goalCard();
-  h += `<div class="week">${JOURS_COURT.map((j, i) => {
-    const has = db.programs.some(p => p.days.includes(i));
-    return `<button data-act="pickDay" data-i="${i}" class="${i === d ? 'on' : ''} ${i === t ? 'today' : ''}">${j}<span class="dot ${has ? '' : 'empty'}"></span></button>`;
-  }).join('')}</div>`;
-  const list = db.programs.filter(p => p.days.includes(d));
+  const done = doneDaysThisWeek();
+  h += `<div class="week">${JOURS_COURT.map((j, i) =>
+    `<button data-act="pickDay" data-i="${i}" class="${i === d ? 'on' : ''} ${i === t ? 'today' : ''} ${done.has(i) ? 'done' : ''}" aria-label="${JOURS[i]}${done.has(i) ? ' (séance faite)' : ''}">${done.has(i) ? ic('check') : j}</button>`
+  ).join('')}</div>`;
   h += `<h2>${d === t ? 'Séance du jour' : 'Séance du ' + JOURS[d].toLowerCase()}</h2>`;
-  h += list.length ? list.map(todayCard).join('')
-    : `<div class="card"><p class="muted">Rien de prévu ${d === t ? "aujourd'hui" : 'ce jour-là'} — repos 😴</p></div>`;
-  const others = db.programs.filter(p => !p.days.includes(d));
-  if (others.length) {
-    h += `<h2>Autres séances</h2><div class="list">${others.map(p => listRow({
-      act: 'start', attrs: `data-id="${p.id}"`, title: esc(p.name),
-      sub: `${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''}${p.days.length ? ' · ' + [...p.days].sort().map(i => JOURS_COURT[i]).join(', ') : ''}`,
-      right: '<span class="muted small">Démarrer</span>',
-    })).join('')}</div>`;
-  }
+  const list = trainingFor(d);
+  if (list.length) h += list.map(todayCard).join('');
+  else if (isRestDay(d)) h += `<div class="card rest"><h3>😴 Jour de repos</h3><p class="muted">Rien à faire, profite pour récupérer.</p></div>`;
+  else h += `<div class="card todo-card"><h3>À programmer</h3>
+      <p class="muted">Aucune séance prévue le ${JOURS[d].toLowerCase()}.</p>
+      <button class="btn primary block" data-act="dayPlan" data-day="${d}">Programmer le ${JOURS[d].toLowerCase()}</button></div>`;
   return h;
+}
+/* Séances (hors repos) prévues un jour donné */
+function trainingFor(day) { return db.programs.filter(p => p.cat !== 'repos' && p.days.includes(day)); }
+function isRestDay(day) { return db.programs.some(p => p.cat === 'repos' && p.days.includes(day)); }
+function doneDaysThisWeek() {
+  const monday = new Date(); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - todayIdx());
+  const out = new Set();
+  for (const s of db.sessions) { const dt = new Date(s.start); if (dt >= monday) out.add((dt.getDay() + 6) % 7); }
+  return out;
 }
 function lastDoneOf(p) { return db.sessions.filter(s => s.programId === p.id).sort((a, b) => (a.start < b.start ? 1 : -1))[0]; }
 function todayCard(p) {
@@ -470,8 +499,9 @@ function exCard(e, i) {
     h += `<div class="fb">
       <p class="fb-q">Comment c'était ?</p>
       <div class="chips">${Object.entries(FEEL).map(([k, v]) => `<button class="chip ${e.feel === k ? 'on' : ''}" data-act="feel" data-i="${i}" data-v="${k}">${v.e} ${v.t}</button>`).join('')}</div>
-      ${e.feel === 'easy' ? `<p class="hint">La prochaine fois : ${e.type === 'muscu' && e.kg != null ? '+2,5 kg' : e.type === 'cardio' ? 'à toi de pousser 😉' : isSec(e) ? '+5 s' : '+1 rep'} automatiquement</p>` : ''}
+      <p class="explain">${feelEffect(e)}</p>
       <input class="txt" data-scope="act" data-i="${i}" data-f="note" data-text="1" placeholder="À améliorer la prochaine fois (optionnel)" value="${esc(e.note)}">
+      <p class="explain">📝 Ta note s'affichera sous cet exercice à ta prochaine séance.</p>
       <button class="btn small" data-act="fbClose">OK</button>
     </div>`;
   } else if (e.done) {
@@ -483,6 +513,18 @@ function exCard(e, i) {
   return h + '</section>';
 }
 
+/* Ce que le ressenti change pour la prochaine séance */
+function nextUp(e) {
+  if (e.type === 'cardio') return null;
+  if (e.type === 'muscu' && e.kg != null) return `${fmtNum(r2(e.kg + 2.5))} kg`;
+  return `${fmtNum((e.reps || 0) + (isSec(e) ? 5 : 1))} ${unitOf(e)}`;
+}
+function feelEffect(e) {
+  if (!e.feel) return 'Ton ressenti prépare ta prochaine séance : 💪 trop facile → je monte la charge, 😮‍💨 trop dur ou 👌 parfait → on garde pareil.';
+  if (e.feel === 'easy') return nextUp(e) ? `➜ Prochaine séance : je te proposerai <strong>${nextUp(e)}</strong> au lieu de ${e.type === 'muscu' && e.kg != null ? fmtNum(e.kg) + ' kg' : fmtNum(e.reps) + ' ' + unitOf(e)}.` : '➜ Prochaine séance : vise un peu plus loin ou plus vite !';
+  if (e.feel === 'hard') return '➜ Prochaine séance : on garde les mêmes valeurs pour bien les valider.';
+  return '➜ Prochaine séance : mêmes valeurs. Quand ça devient facile, dis-le et ça montera.';
+}
 function stepper(label, scope, i, f, value, step, unit = '') {
   const a = `data-scope="${scope}" data-i="${i}" data-f="${f}"`;
   return `<div class="stepper"><span class="st-l">${label}</span>
@@ -499,37 +541,87 @@ function steppersFor(e, scope, i) {
 }
 
 /* ----- Séances (programmes) ----- */
+const progLabel = p => `${CATS[p.cat]?.e || ''} ${esc(p.name)}`;
 function viewPrograms() {
-  let h = `<header class="top"><h1>Séances</h1></header>`;
-  if (!db.programs.length) h += `<div class="card"><p class="muted">Aucune séance pour l'instant.</p></div>`;
-  else {
-    const sorted = [...db.programs].sort((a, b) => Math.min(...a.days, 9) - Math.min(...b.days, 9));
-    h += `<div class="list">${sorted.map(p => listRow({
-      act: 'editProgram', attrs: `data-id="${p.id}"`, title: esc(p.name),
-      sub: `${p.days.length ? [...p.days].sort().map(i => JOURS_COURT[i]).join(', ') : 'Aucun jour'} · ${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''}`,
-    })).join('')}</div>`;
+  let h = `<header class="top"><h1>Séances</h1><p class="muted">Ta semaine type : touche un jour pour le programmer.</p></header>`;
+  h += `<h2>Ma semaine</h2><div class="list">${JOURS.map((j, i) => {
+    const tr = trainingFor(i), rest = !tr.length && isRestDay(i);
+    const sub = tr.length ? tr.map(progLabel).join(' + ') : rest ? '😴 Repos' : '<span class="todo">À programmer</span>';
+    return listRow({ act: 'dayPlan', attrs: `data-day="${i}"`, title: j, sub });
+  }).join('')}</div>`;
+  const progs = db.programs.filter(p => p.cat !== 'repos');
+  if (progs.length) {
+    h += `<h2>Mes séances</h2>`;
+    for (const [k, c] of Object.entries(CATS)) {
+      if (k === 'repos') continue;
+      const list = progs.filter(p => p.cat === k);
+      if (!list.length) continue;
+      h += `<p class="cat-t">${c.e} ${c.t}</p><div class="list">${list.map(p => listRow({
+        act: 'editProgram', attrs: `data-id="${p.id}"`, title: esc(p.name),
+        sub: `${p.days.length ? [...p.days].sort().map(i => JOURS_COURT[i]).join(', ') : 'Aucun jour'} · ${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''}`,
+      })).join('')}</div>`;
+    }
   }
   return h + `<button class="btn primary block" data-act="newProgram">+ Nouvelle séance</button>`;
 }
+function suggestionsFor(p) {
+  const list = p.cat === 'salle' ? (SUGGEST[p.name.trim()] || SUGGEST.salle) : (SUGGEST[p.cat] || []);
+  const have = new Set(p.exercises.map(e => nkey(e.name)));
+  return list.filter(s => !have.has(nkey(s[0])));
+}
 function viewEditor() {
-  const p = ui.draft, isNew = !db.programs.some(x => x.id === p.id);
-  let h = `<header class="top"><button class="back" data-act="cancelEdit">‹ Annuler</button><h1>${isNew ? 'Nouvelle séance' : 'Modifier'}</h1></header>
-    <div class="card">
-      <label class="lbl">Nom</label>
-      <input class="txt big" data-draft="name" value="${esc(p.name)}" placeholder="Push, Jambes, Footing…">
-      <label class="lbl">Jours</label>
-      <div class="days">${JOURS_COURT.map((j, i) => `<button data-act="toggleDay" data-i="${i}" class="${p.days.includes(i) ? 'on' : ''}">${j}</button>`).join('')}</div>
-    </div>
-    <h2>Exercices</h2>`;
-  h += p.exercises.length
-    ? `<div class="list">${p.exercises.map((e, i) => listRow({ act: 'editExDraft', attrs: `data-i="${i}"`, title: esc(e.name), sub: `${TYPES[e.type]} · ${planText(e)}` })).join('')}</div>`
-    : `<p class="muted small">Ajoute les exercices dans l'ordre où tu les fais.</p>`;
-  h += `<button class="btn ghost block" data-act="addExDraft">+ Ajouter un exercice</button>`;
-  if (!isNew) h += `<button class="btn text danger block" data-act="deleteProgram">Supprimer cette séance</button>`;
-  h += `<div class="footer-actions"><button class="btn primary" data-act="saveProgram">Enregistrer</button></div>`;
+  const p = ui.draft, isNew = !db.programs.some(x => x.id === p.id), cat = CATS[p.cat];
+  let h = `<header class="top"><button class="back" data-act="cancelEdit">‹ Annuler</button>
+    <p class="eyebrow">${cat.e} ${cat.t}</p><h1>${p.cat === 'repos' ? 'Jours de repos' : isNew ? 'Nouvelle séance' : 'Modifier'}</h1></header><div class="card">`;
+  if (p.cat === 'salle') {
+    h += `<label class="lbl">Type de séance</label><div class="chips tight">${SALLE_TYPES.map(t => `<button class="chip ${p.name.trim() === t ? 'on' : ''}" data-act="pickType" data-v="${t}">${t}</button>`).join('')}</div>`;
+  }
+  if (p.cat !== 'repos') h += `<label class="lbl">Nom</label><input class="txt big" data-draft="name" value="${esc(p.name)}" placeholder="${p.cat === 'salle' ? 'ex. Push' : p.cat === 'maison' ? 'ex. Circuit maison' : 'ex. Footing'}">`;
+  h += `<label class="lbl">Jours</label>
+    <div class="days">${JOURS_COURT.map((j, i) => `<button data-act="toggleDay" data-i="${i}" class="${p.days.includes(i) ? 'on' : ''}">${j}</button>`).join('')}</div></div>`;
+  if (p.cat !== 'repos') {
+    h += `<h2>Exercices</h2>`;
+    if (p.exercises.length) h += `<div class="list">${p.exercises.map((e, i) => listRow({ act: 'editExDraft', attrs: `data-i="${i}"`, title: esc(e.name), sub: planText(e) })).join('')}</div>`;
+    const sug = suggestionsFor(p);
+    if (sug.length) {
+      h += `<p class="cat-t">Propositions — touche pour ajouter</p>
+        <div class="chips tight">${sug.map(([n]) => `<button class="chip" data-act="addSuggest" data-n="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div>`;
+    }
+    h += `<button class="btn ghost block" data-act="addExDraft">+ Autre exercice</button>`;
+  }
+  if (!isNew) h += `<button class="btn text danger block" data-act="deleteProgram">Supprimer ${p.cat === 'repos' ? 'les jours de repos' : 'cette séance'}</button>`;
+  h += `<div class="footer-actions">${!isNew && p.cat !== 'repos' ? `<button class="btn" data-act="start" data-id="${p.id}">Démarrer</button>` : ''}<button class="btn primary" data-act="saveProgram">Enregistrer</button></div>`;
   return h;
 }
 function viewSheet() {
+  if (ui.sheet.kind === 'cat') return viewCatSheet();
+  if (ui.sheet.kind === 'day') return viewDaySheet();
+  return viewExSheet();
+}
+function viewCatSheet() {
+  const day = ui.sheet.day;
+  return `<div class="sheet-bg" data-act="closeSheet"></div>
+  <div class="sheet" role="dialog" aria-label="Nouvelle séance"><div class="grab"></div>
+    <h3>${day != null ? 'Le ' + JOURS[day].toLowerCase() + ', ' : ''}c'est…</h3>
+    <div class="list">${Object.entries(CATS).map(([k, c]) => listRow({ act: 'pickCat', attrs: `data-v="${k}"`, title: `${c.e} ${c.t}`, sub: c.s })).join('')}</div>
+  </div>`;
+}
+function viewDaySheet() {
+  const day = ui.sheet.day, cur = trainingFor(day), rest = isRestDay(day);
+  const others = db.programs.filter(p => p.cat !== 'repos' && !p.days.includes(day));
+  let h = `<div class="sheet-bg" data-act="closeSheet"></div>
+  <div class="sheet" role="dialog" aria-label="${JOURS[day]}"><div class="grab"></div>
+    <h3>${JOURS[day]}</h3>`;
+  if (cur.length) h += `<p class="cat-t">Prévu</p><div class="list">${cur.map(p => listRow({ act: 'editProgram', attrs: `data-id="${p.id}"`, title: progLabel(p), sub: `${p.exercises.length} exercice${p.exercises.length > 1 ? 's' : ''} · modifier` })).join('')}</div>`;
+  else if (rest) h += `<p class="muted">😴 Jour de repos</p>`;
+  h += `<div class="list">`;
+  h += listRow({ act: 'newProgram', attrs: `data-day="${day}"`, title: '+ Créer une nouvelle séance' });
+  if (others.length) h += others.map(p => listRow({ act: 'assignDay', attrs: `data-id="${p.id}"`, title: progLabel(p), sub: 'Mettre cette séance ce jour-là' })).join('');
+  if (!rest) h += listRow({ act: 'assignRest', title: '😴 Jour de repos' });
+  if (cur.length || rest) h += listRow({ act: 'clearDay', title: 'Laisser à programmer', cls: 'danger' });
+  return h + `</div></div>`;
+}
+function viewExSheet() {
   const s = ui.sheet, e = s.ex, isNew = s.index < 0;
   return `<div class="sheet-bg" data-act="closeSheet"></div>
   <div class="sheet" role="dialog" aria-label="Exercice">
@@ -547,23 +639,47 @@ function viewSheet() {
 
 /* ----- Historique ----- */
 function viewHistory() {
-  let h = `<header class="top"><h1>Historique</h1></header>`;
-  const list = [...db.sessions].sort((a, b) => (a.start < b.start ? 1 : -1));
-  if (!list.length) return h + `<div class="card"><p class="muted">Tes séances terminées apparaîtront ici.</p></div>`;
-  let month = '', rows = [];
-  const flush = () => { if (rows.length) h += `<h2>${month}</h2><div class="list">${rows.join('')}</div>`; rows = []; };
-  for (const s of list) {
-    const m = cap(new Date(s.start).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
-    if (m !== month) { flush(); month = m; }
-    const dur = s.end ? (new Date(s.end) - new Date(s.start)) / 60000 : null;
-    const prs = newRecords(s).length;
-    rows.push(listRow({
-      act: 'openSession', attrs: `data-id="${s.id}"`, title: esc(s.programName),
-      sub: `${cap(fmtDate(s.start))} · ${fmtDuree(dur)} · ${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}`,
-      right: prs ? `<span class="pill ok">🏆 ${prs}</span>` : '',
-    }));
+  const n = new Date();
+  if (!ui.cal) ui.cal = { y: n.getFullYear(), m: n.getMonth() };
+  const { y, m } = ui.cal;
+  const first = new Date(y, m, 1), nbDays = new Date(y, m + 1, 0).getDate(), offset = (first.getDay() + 6) % 7;
+  const byDay = new Map();
+  for (const s of db.sessions) {
+    const d = new Date(s.start);
+    if (d.getFullYear() === y && d.getMonth() === m) {
+      const k = d.getDate();
+      byDay.set(k, [...(byDay.get(k) || []), s].sort((a, b) => (a.start < b.start ? -1 : 1)));
+    }
   }
-  flush();
+  const count = [...byDay.values()].reduce((a, l) => a + l.length, 0);
+  let h = `<header class="top"><h1>Historique</h1></header>
+    <div class="card cal">
+      <div class="cal-head">
+        <button class="icon-btn" data-act="calMove" data-d="-1" aria-label="Mois précédent">‹</button>
+        <strong>${cap(first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))}</strong>
+        <button class="icon-btn" data-act="calMove" data-d="1" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="cal-grid">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(j => `<span class="cal-wd">${j}</span>`).join('')}
+        ${'<span></span>'.repeat(offset)}
+        ${Array.from({ length: nbDays }, (_, i) => {
+          const d = i + 1, list = byDay.get(d), isToday = sameDay(new Date(y, m, d), n), sel = ui.calSel === `${y}-${m}-${d}`;
+          return `<button class="cal-d ${list ? 'done' : ''} ${isToday ? 'today' : ''} ${sel ? 'sel' : ''}" ${list ? `data-act="calPick" data-k="${y}-${m}-${d}"` : 'disabled'}>
+            <span class="cal-n">${d}</span>${list ? `<span class="cal-nm">${esc(list[0].programName)}</span>` : ''}</button>`;
+        }).join('')}
+      </div>
+      <p class="muted small">${count ? `${count} séance${count > 1 ? 's' : ''} ce mois-ci` : 'Aucune séance ce mois-ci'}</p>
+    </div>`;
+  const [sy, sm, sd] = (ui.calSel || '').split('-').map(Number);
+  const selList = ui.calSel && sy === y && sm === m ? byDay.get(sd) : null;
+  if (selList) {
+    h += `<h2>${cap(new Date(sy, sm, sd).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</h2>
+      <div class="list">${selList.map(s => {
+        const dur = s.end ? (new Date(s.end) - new Date(s.start)) / 60000 : null, prs = newRecords(s).length;
+        return listRow({ act: 'openSession', attrs: `data-id="${s.id}"`, title: esc(s.programName),
+          sub: `${fmtTime(s.start)} · ${fmtDuree(dur)} · ${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}`,
+          right: prs ? `<span class="pill ok">🏆 ${prs}</span>` : '' });
+      }).join('')}</div>`;
+  } else if (count) h += `<p class="muted small center">Touche un jour vert pour voir ta séance.</p>`;
   return h;
 }
 function viewSessionDetail() {
@@ -575,6 +691,7 @@ function viewSessionDetail() {
   if (prs.length) h += `<div class="card record"><strong>🏆 Nouveaux records</strong>${prs.map(p => `<p>${esc(p)}</p>`).join('')}</div>`;
   h += `<div class="list">${s.exercises.map(e => `<div class="lrow static"><span class="lrow-main"><span class="lrow-t">${esc(e.name)}</span>
     <span class="lrow-s">${summary(e)}${e.feel ? ' · ' + FEEL[e.feel].e + ' ' + FEEL[e.feel].t : ''}</span>
+    ${e.feel === 'easy' && nextUp(e) ? `<span class="lrow-s up">➜ Prochaine fois : ${nextUp(e)}</span>` : ''}
     ${e.note ? `<span class="lrow-s">📝 ${esc(e.note)}</span>` : ''}</span></div>`).join('')}</div>`;
   h += `<button class="btn text danger block" data-act="deleteSession" data-id="${s.id}">Supprimer cette séance</button>`;
   return h;
@@ -707,6 +824,24 @@ function clearActive() {
   ui.fbIdx = null; ui.editIdx = null;
   stopTimer(); keepAwake(false);
 }
+/* Marque un jour comme repos (sans jour : ouvre l'éditeur des jours de repos) */
+function setRest(day) {
+  ui.sheet = null;
+  const existing = db.programs.find(p => p.cat === 'repos');
+  if (day == null) {
+    ui.draft = existing ? JSON.parse(JSON.stringify(existing)) : { id: uid(), cat: 'repos', name: 'Repos', days: [], exercises: [] };
+    ui.view = 'editProgram'; render(); return;
+  }
+  let r = existing;
+  if (!r) { r = { id: uid(), cat: 'repos', name: 'Repos', days: [], exercises: [] }; db.programs.push(r); }
+  setDay(r, day); saveDb(); render(); toast(`${JOURS[day]} : repos 😴`);
+}
+/* Met la séance p ce jour-là (et l'enlève des autres) */
+function setDay(p, day) {
+  db.programs.forEach(o => { if (o.id !== p.id && o.days.includes(day)) { o.days = o.days.filter(x => x !== day); o.u = now(); } });
+  if (!p.days.includes(day)) p.days = [...p.days, day].sort();
+  p.u = now();
+}
 function newEx() { return { id: uid(), name: '', type: 'muscu', unit: 'reps', sets: 3, reps: 10, kg: null, km: null, min: null, rest: null }; }
 function cleanEntry(e) { const { hint, lastNote, done, ...rest } = e; return rest; }
 function authMsg(t) { const el = $('#authMsg'); if (el) el.textContent = t; }
@@ -756,6 +891,8 @@ const actions = {
     const session = { id: a.id, programId: a.programId, programName: a.programName, start: a.start, end: new Date().toISOString(), u: now(), exercises: done.map(cleanEntry) };
     db.sessions.push(session);
     clearActive(); saveDb();
+    const sd = new Date(session.start);
+    ui.cal = { y: sd.getFullYear(), m: sd.getMonth() }; ui.calSel = `${sd.getFullYear()}-${sd.getMonth()}-${sd.getDate()}`;
     ui.view = 'sessionDetail'; ui.sessionId = session.id; ui.tab = 'history';
     render(); window.scrollTo(0, 0); toast('Séance enregistrée 💪');
   },
@@ -765,13 +902,39 @@ const actions = {
   },
 
   /* Programmes */
-  newProgram() {
-    ui.draft = { id: uid(), name: '', days: ui.tab === 'today' ? [ui.day] : [], exercises: [] };
-    ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
+  newProgram(d) { ui.sheet = { kind: 'cat', day: d && d.day != null ? +d.day : null }; render(); },
+  pickCat(d) {
+    const day = ui.sheet.day;
+    if (d.v === 'repos') { setRest(day); return; }
+    const name = d.v === 'maison' ? 'Circuit maison' : d.v === 'exterieur' ? 'Footing' : '';
+    ui.draft = { id: uid(), cat: d.v, name, days: day != null ? [day] : [], exercises: [] };
+    ui.sheet = null; ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
+  },
+  pickType(d) { ui.draft.name = d.v; render(); },
+  addSuggest(d) {
+    const s = Object.values(SUGGEST).flat().find(x => x[0] === d.n); if (!s) return;
+    const [name, type, unit] = s, cardio = type === 'cardio';
+    ui.draft.exercises.push({
+      id: uid(), name, type, unit: unit || 'reps',
+      sets: cardio ? null : (type === 'muscu' ? 4 : 3), reps: cardio ? null : (unit === 'sec' ? 30 : type === 'muscu' ? 10 : 15),
+      kg: null, km: cardio ? 5 : null, min: cardio ? 30 : null, rest: null,
+    });
+    render();
+  },
+  dayPlan(d) { ui.sheet = { kind: 'day', day: +d.day }; render(); },
+  assignDay(d) {
+    const p = db.programs.find(x => x.id === d.id); if (!p) return;
+    setDay(p, ui.sheet.day); saveDb(); ui.sheet = null; render(); toast(`${p.name} : c'est noté`);
+  },
+  assignRest() { setRest(ui.sheet ? ui.sheet.day : null); },
+  clearDay() {
+    const day = ui.sheet.day;
+    db.programs.forEach(p => { if (p.days.includes(day)) { p.days = p.days.filter(x => x !== day); p.u = now(); } });
+    saveDb(); ui.sheet = null; render();
   },
   editProgram(d) {
     const p = db.programs.find(x => x.id === d.id); if (!p) return;
-    ui.draft = JSON.parse(JSON.stringify(p)); ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
+    ui.sheet = null; ui.draft = JSON.parse(JSON.stringify(p)); ui.view = 'editProgram'; render(); window.scrollTo(0, 0);
   },
   cancelEdit() { ui.draft = null; ui.sheet = null; ui.view = null; render(); },
   toggleDay(d) {
@@ -806,22 +969,33 @@ const actions = {
   delEx() { ui.draft.exercises.splice(ui.sheet.index, 1); ui.sheet = null; render(); },
   saveProgram() {
     const p = ui.draft;
-    p.name = (p.name || '').trim();
+    p.name = (p.name || '').trim() || (p.cat === 'repos' ? 'Repos' : '');
     if (!p.name) { toast('Donne un nom à la séance'); return; }
-    if (!p.exercises.length) { toast('Ajoute au moins un exercice'); return; }
+    if (p.cat !== 'repos' && !p.exercises.length) { toast('Ajoute au moins un exercice'); return; }
     p.u = now();
+    // Un seul programme par jour : on libère ces jours dans les autres séances
+    db.programs.forEach(o => {
+      if (o.id === p.id) return;
+      const keep = o.days.filter(x => !p.days.includes(x));
+      if (keep.length !== o.days.length) { o.days = keep; o.u = now(); }
+    });
     const i = db.programs.findIndex(x => x.id === p.id);
     if (i >= 0) db.programs[i] = p; else db.programs.push(p);
-    saveDb(); ui.draft = null; ui.view = null; render(); toast('Séance enregistrée');
+    saveDb(); ui.draft = null; ui.view = null; ui.tab = 'programs'; render(); toast('Enregistré ✅');
   },
   deleteProgram() {
-    if (!confirm(`Supprimer la séance « ${ui.draft.name} » ? Ton historique est conservé.`)) return;
+    if (!confirm(ui.draft.cat === 'repos' ? 'Retirer tous les jours de repos ?' : `Supprimer la séance « ${ui.draft.name} » ? Ton historique est conservé.`)) return;
     db.deleted[ui.draft.id] = now();
     db.programs = db.programs.filter(x => x.id !== ui.draft.id);
     saveDb(); ui.draft = null; ui.view = null; render();
   },
 
   /* Historique */
+  calMove(d) {
+    const c = new Date(ui.cal.y, ui.cal.m + +d.d, 1);
+    ui.cal = { y: c.getFullYear(), m: c.getMonth() }; render();
+  },
+  calPick(d) { ui.calSel = ui.calSel === d.k ? null : d.k; render(); },
   openSession(d) { ui.sessionId = d.id; ui.view = 'sessionDetail'; render(); window.scrollTo(0, 0); },
   closeDetail() { ui.view = null; ui.tab = 'history'; render(); },
   deleteSession(d) {
