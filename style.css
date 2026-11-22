@@ -1,11 +1,12 @@
-/* Séances — V3 : dégradés violet → rose → orange, verre, thèmes clair / sombre / auto. */
+/* Séances — V4 : palettes de couleurs au choix (Profil > Apparence), verre, thèmes clair / sombre / auto.
+   Chaque palette définit 3 couleurs de dégradé (--g1..3), la couleur du texte posé dessus (--on-grad)
+   et la couleur d'accent en clair (--acc-l) et en sombre (--acc-d). */
 :root {
-  --g1: #7c3aed;  /* violet */
-  --g2: #ec4899;  /* rose   */
-  --g3: #f97316;  /* orange */
+  --g1: #18181b; --g2: #3f3f46; --g3: #71717a;  /* Graphite (neutre) par défaut */
+  --on-grad: #ffffff; --acc-l: #27272a; --acc-d: #e4e4e7; --blob-k: .35;
   --grad: linear-gradient(135deg, var(--g1) 0%, var(--g2) 55%, var(--g3) 100%);
-  --grad-soft: linear-gradient(135deg, rgba(124, 58, 237, .14), rgba(236, 72, 153, .12) 60%, rgba(249, 115, 22, .12));
-  --glow: 0 12px 32px rgba(236, 72, 153, .32);
+  --grad-soft: linear-gradient(135deg, color-mix(in srgb, var(--g1) 14%, transparent), color-mix(in srgb, var(--g2) 12%, transparent) 60%, color-mix(in srgb, var(--g3) 12%, transparent));
+  --glow: 0 12px 32px color-mix(in srgb, var(--g2) 30%, transparent);
 
   --bg: #f7f3fb;
   --surface: rgba(255, 255, 255, .86);
@@ -13,9 +14,9 @@
   --line: #e7def1;
   --text: #1b1426;
   --muted: #6f6582;
-  --accent: #9333ea;
-  --accent-soft: rgba(147, 51, 234, .1);
-  --on-accent: #ffffff;
+  --accent: var(--acc-l);
+  --accent-soft: color-mix(in srgb, var(--acc-l) 10%, transparent);
+  --on-accent: var(--on-grad);
   --ok: #16a34a;
   --danger: #e11d48;
   --warm: #fff1e4;
@@ -33,7 +34,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0d0a14; --surface: rgba(30, 24, 43, .84); --surface-2: #231b31; --line: rgba(255, 255, 255, .09);
-    --text: #f6f2fb; --muted: #a99fbb; --accent: #d49bff; --accent-soft: rgba(212, 155, 255, .13);
+    --text: #f6f2fb; --muted: #a99fbb; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
     --ok: #34d399; --danger: #fb7185; --warm: rgba(249, 115, 22, .14);
     --glass: rgba(28, 22, 40, .55); --glass-line: rgba(255, 255, 255, .13); --glass-hi: rgba(255, 255, 255, .2);
     --shadow: 0 14px 40px rgba(0, 0, 0, .55); --blob: .45; color-scheme: dark;
@@ -41,10 +42,26 @@
 }
 :root[data-theme="dark"] {
   --bg: #0d0a14; --surface: rgba(30, 24, 43, .84); --surface-2: #231b31; --line: rgba(255, 255, 255, .09);
-  --text: #f6f2fb; --muted: #a99fbb; --accent: #d49bff; --accent-soft: rgba(212, 155, 255, .13);
+  --text: #f6f2fb; --muted: #a99fbb; --accent: var(--acc-d); --accent-soft: color-mix(in srgb, var(--acc-d) 13%, transparent);
   --ok: #34d399; --danger: #fb7185; --warm: rgba(249, 115, 22, .14);
   --glass: rgba(28, 22, 40, .55); --glass-line: rgba(255, 255, 255, .13); --glass-hi: rgba(255, 255, 255, .2);
   --shadow: 0 14px 40px rgba(0, 0, 0, .55); --blob: .45; color-scheme: dark;
+}
+
+/* ---- Palettes ---- */
+:root[data-palette="sunset"] { --g1: #7c3aed; --g2: #ec4899; --g3: #f97316; --on-grad: #fff; --acc-l: #9333ea; --acc-d: #d49bff; --blob-k: 1; }
+:root[data-palette="ocean"]  { --g1: #0ea5e9; --g2: #2563eb; --g3: #4f46e5; --on-grad: #fff; --acc-l: #2563eb; --acc-d: #7dd3fc; --blob-k: .9; }
+:root[data-palette="foret"]  { --g1: #22c55e; --g2: #0d9488; --g3: #0e7490; --on-grad: #fff; --acc-l: #0f766e; --acc-d: #5eead4; --blob-k: .8; }
+:root[data-palette="feu"]    { --g1: #dc2626; --g2: #ea580c; --g3: #f59e0b; --on-grad: #fff; --acc-l: #c2410c; --acc-d: #fdba74; --blob-k: .8; }
+:root[data-palette="neon"]   { --g1: #bef264; --g2: #84cc16; --g3: #22d3ee; --on-grad: #0b1004; --acc-l: #4d7c0f; --acc-d: #bef264; --blob-k: .7; }
+/* Graphite en sombre : dégradé clair, texte foncé dessus */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-palette]):not([data-theme="light"]), :root[data-palette="graphite"]:not([data-theme="light"]) {
+    --g1: #fafafa; --g2: #d4d4d8; --g3: #a1a1aa; --on-grad: #18181b;
+  }
+}
+:root:not([data-palette])[data-theme="dark"], :root[data-palette="graphite"][data-theme="dark"] {
+  --g1: #fafafa; --g2: #d4d4d8; --g3: #a1a1aa; --on-grad: #18181b;
 }
 
 * { box-sizing: border-box; }
@@ -59,7 +76,7 @@ body {
 }
 /* Fond : taches de couleur floues (rendent l'effet verre visible) */
 body::before {
-  content: ""; position: fixed; inset: -10%; z-index: 0; pointer-events: none; opacity: var(--blob);
+  content: ""; position: fixed; inset: -10%; z-index: 0; pointer-events: none; opacity: calc(var(--blob) * var(--blob-k));
   background:
     radial-gradient(38% 28% at 12% 8%, var(--g1), transparent 70%),
     radial-gradient(34% 26% at 95% 32%, var(--g2), transparent 70%),
@@ -380,10 +397,13 @@ h1 {
 .bar span { background: var(--grad); }
 .pill { background: var(--grad-soft); color: var(--accent); }
 .chip.on { background: var(--grad-soft); border-color: var(--g2); color: var(--text); }
-.week button.on:not(.done) { background: var(--grad); border-color: transparent; color: #fff; box-shadow: var(--glow); }
-.days button.on { background: var(--grad); border-color: transparent; color: #fff; }
+.week button.on:not(.done) { background: var(--grad); border-color: transparent; color: var(--on-grad); box-shadow: var(--glow); }
+.days button.on { background: var(--grad); border-color: transparent; color: var(--on-grad); }
+.btn.primary { color: var(--on-grad); }
+.exc.done .tick { color: var(--on-grad); }
 .exc.done .tick { background: var(--grad); border-color: transparent; }
-.avatar { background: var(--grad); color: #fff; }
+.avatar { background: var(--grad); color: var(--on-grad); }
+.auth .logo { color: var(--on-grad); }
 .auth .logo { background: var(--grad); box-shadow: var(--glow); }
 .goal .goal-t .ic, .empty-ic { color: var(--g2); }
 .kpi strong { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -393,7 +413,7 @@ h1 {
 .hint.note { background: var(--warm); }
 .glassbar button.on { color: var(--text); font-weight: 700; }
 .bubble {
-  background: linear-gradient(135deg, rgba(124, 58, 237, .42), rgba(236, 72, 153, .34) 60%, rgba(249, 115, 22, .3));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--g1) 42%, transparent), color-mix(in srgb, var(--g2) 34%, transparent) 60%, color-mix(in srgb, var(--g3) 30%, transparent));
   border-color: rgba(255, 255, 255, .35);
 }
 
@@ -415,7 +435,7 @@ h1 {
 
 /* Carte « affiche » de la séance du jour */
 .poster {
-  position: relative; overflow: hidden; border: 0; color: #fff;
+  position: relative; overflow: hidden; border: 0; color: var(--on-grad);
   background: var(--grad); box-shadow: var(--glow); padding: 20px;
 }
 .poster::after {
@@ -424,11 +444,13 @@ h1 {
 }
 .poster .p-eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .9; margin: 0; }
 .poster h3 { font: 700 2.5rem/1.05 var(--font-title); margin: 6px 0 2px; text-transform: uppercase; letter-spacing: -.01em; }
-.poster .muted { color: rgba(255, 255, 255, .85); }
-.poster .plan li { border-top-color: rgba(255, 255, 255, .22); }
-.poster .plan-v { color: rgba(255, 255, 255, .9); font-weight: 600; }
-.poster .btn.primary { background: #fff; color: #2a1340; box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }
-.poster .pill.ok { background: rgba(255, 255, 255, .25); color: #fff; }
+.poster .muted { color: var(--on-grad); opacity: .85; }
+.poster .plan li { border-top-color: color-mix(in srgb, var(--on-grad) 22%, transparent); }
+.poster .plan-v { color: var(--on-grad); opacity: .92; font-weight: 600; }
+.poster .btn.primary { background: var(--on-grad); color: var(--g1); box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }
+.poster .pill.ok { background: color-mix(in srgb, var(--on-grad) 22%, transparent); color: var(--on-grad); }
+.poster .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+.poster .tags span { font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: color-mix(in srgb, var(--on-grad) 18%, transparent); }
 
 /* Minuteur en cercle */
 #timerRing { width: 34px; height: 34px; transform: rotate(-90deg); flex: none; }
@@ -441,7 +463,7 @@ h1 {
 .exc.pop .tick { animation: pop .5s cubic-bezier(.3, 1.7, .5, 1); }
 .exc.pop { animation: flash .7s ease; }
 @keyframes pop { 0% { transform: scale(.55); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-@keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, .5); } 100% { box-shadow: 0 0 0 14px rgba(236, 72, 153, 0); } }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--g2) 50%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
 
 /* Confettis (nouveau record) */
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
@@ -464,7 +486,37 @@ main > *:nth-child(n+6) { animation-delay: .2s; }
 /* Choix du thème */
 .seg { display: flex; gap: 4px; padding: 3px; border-radius: 99px; background: var(--surface-2); flex: none; }
 .seg button { border: 0; background: none; color: var(--muted); font: 600 .8rem var(--font); padding: 7px 11px; border-radius: 99px; cursor: pointer; }
-.seg button.on { background: var(--grad); color: #fff; }
+.seg button.on { background: var(--grad); color: var(--on-grad); }
+
+/* Choix de la palette */
+.palettes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 14px 16px 16px; }
+.pal {
+  -webkit-appearance: none; appearance: none; margin: 0; padding: 10px 4px 8px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: 600 .78rem var(--font);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+}
+.pal i { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-style: normal; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.pal.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Tuiles de stats (résumé de séance, progrès) */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.tile strong { display: block; font: 700 1.45rem/1.15 var(--font-title); }
+.tile span { font-size: .8rem; color: var(--muted); }
+.tile .delta { display: block; font-size: .78rem; font-weight: 600; margin-top: 2px; }
+.delta.up { color: var(--ok); } .delta.down { color: var(--danger); }
+.chrono { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+.card > .row-between > strong { flex: none; }
+.card > .row-between > .muted { text-align: right; }
+
+/* Barres de volume par semaine */
+.vbars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; align-items: end; height: 130px; margin-top: 12px; }
+.vbar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.vbar b { width: 100%; max-width: 26px; border-radius: 6px 6px 3px 3px; background: var(--grad); min-height: 3px; animation: grow .7s cubic-bezier(.2, .8, .2, 1) both; transform-origin: bottom; }
+.vbar.cur b { box-shadow: var(--glow); }
+.vbar span { font-size: .65rem; color: var(--muted); }
+@keyframes grow { from { transform: scaleY(0); } }
+.bw-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   main > *, .sheet, .sheet-bg, .ring .r-fg, .streak .flame, .exc.pop, .exc.pop .tick { animation: none !important; }

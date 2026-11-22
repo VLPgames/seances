@@ -10,6 +10,11 @@ En ligne : https://vlpgames.github.io/seances/
 - **Séances** : nom, jours, exercices (muscu, poids du corps en reps ou secondes, cardio).
 - **Historique**, **Progrès** (records, graphique par exercice), **Profil** (compte, réglages, sauvegarde).
 - Barre d'onglets en verre, glissable ; swipe gauche/droite sur le contenu pour changer d'onglet.
+- Semaine type par jour (salle / maison / extérieur / repos), catalogue de machines, reprise d'une séance sur plusieurs jours.
+- Accueil : anneau de la semaine, série 🔥, carte de la séance du jour (durée estimée, muscles travaillés).
+- Séance : chrono, minuteur de repos en cercle, confettis sur record ; résumé de fin (durée, volume vs dernière fois, records).
+- Progrès : volume par semaine, poids du corps, records, graphique par exercice.
+- Apparence : mode auto / clair / sombre + 6 palettes (Graphite, Océan, Forêt, Sunset, Feu, Néon).
 
 ## Comptes et synchro
 - Hors ligne d'abord : tout est enregistré sur l'appareil, puis synchronisé avec le compte dès qu'il y a du réseau (fusion par élément, la modification la plus récente gagne).
