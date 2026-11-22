@@ -115,7 +115,7 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="no
 
 /* ---------- Données locales ---------- */
 function emptyDb() {
-  return { version: 3, exClean: true, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3 }, settingsU: 0 };
+  return { version: 3, exClean: true, programs: [], sessions: [], active: null, activeClearedAt: 0, deleted: {}, settings: { rest: 90, weeklyGoal: 3, theme: 'auto' }, settingsU: 0 };
 }
 const V1_EXAMPLES = {
   'Push (pecs, épaules, triceps)': ['Développé couché', 'Développé incliné haltères', 'Écarté poulie vis-à-vis', 'Élévations latérales', 'Extension triceps poulie'],
@@ -439,7 +439,16 @@ function planFor(ex, useHistory = true) {
 }
 
 /* ---------- Rendu ---------- */
+/* Thème : auto (suit le téléphone), clair ou sombre */
+function applyTheme() {
+  const t = db.settings.theme || 'auto', root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+  const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0d0a14' : '#f7f3fb');
+}
 function render(dir) {
+  applyTheme();
   let html;
   if (ui.view === 'auth' && cloudOn()) html = viewAuth();
   else if (ui.view === 'session' && db.active) html = viewSession();
@@ -485,7 +494,7 @@ function viewToday() {
       <span class="muted small">${n} sur ${a.exercises.length} exercices · commencée à ${fmtTime(a.start)}</span>
       <span class="btn primary block">Reprendre</span></button>`;
   }
-  h += goalCard();
+  h += heroCard();
   const done = doneDaysThisWeek();
   h += `<div class="week">${JOURS_COURT.map((j, i) =>
     `<button data-act="pickDay" data-i="${i}" class="${i === d ? 'on' : ''} ${i === t ? 'today' : ''} ${done.has(i) ? 'done' : ''}" aria-label="${JOURS[i]}${done.has(i) ? ' (séance faite)' : ''}">${done.has(i) ? ic('check') : j}</button>`
@@ -499,6 +508,40 @@ function viewToday() {
       <button class="btn primary block" data-act="dayPlan" data-day="${d}">Programmer le ${JOURS[d].toLowerCase()}</button></div>`;
   return h;
 }
+/* Lundi 0 h de la semaine contenant la date */
+function weekStart(dt) { const m = new Date(dt); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - (m.getDay() + 6) % 7); return m; }
+/* Nombre de semaines d'affilée où l'objectif est atteint (la semaine en cours compte si c'est déjà fait) */
+function streakWeeks() {
+  const goal = db.settings.weeklyGoal || 3, per = new Map();
+  for (const s of db.sessions) { const k = weekStart(s.start).getTime(); per.set(k, (per.get(k) || 0) + 1); }
+  const w = weekStart(new Date());
+  let n = 0;
+  if ((per.get(w.getTime()) || 0) >= goal) n++;
+  for (;;) {
+    w.setDate(w.getDate() - 7);
+    if ((per.get(w.getTime()) || 0) >= goal) n++; else break;
+  }
+  return n;
+}
+function heroCard() {
+  const g = db.settings.weeklyGoal || 3, n = weekCount(), pct = Math.min(1, n / g);
+  const R = 52, C = 2 * Math.PI * R, st = streakWeeks(), left = Math.max(0, g - n);
+  return `<div class="card hero">
+    <div class="ring">
+      <svg viewBox="0 0 128 128" aria-hidden="true">
+        <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".55" stop-color="#ec4899"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
+        <circle class="r-bg" cx="64" cy="64" r="${R}"/>
+        <circle class="r-fg" cx="64" cy="64" r="${R}" style="--c:${C.toFixed(1)}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}" ${n ? '' : 'opacity="0"'}/>
+      </svg>
+      <div class="ring-c"><strong>${n}<small>/${g}</small></strong><span>cette semaine</span></div>
+    </div>
+    <div class="streak">
+      <strong><span class="flame">🔥</span> ${st}</strong>
+      <p>${st ? `semaine${st > 1 ? 's' : ''} d'affilée` : 'Lance ta série !'}</p>
+      <p class="muted small">${left ? `Encore ${left} séance${left > 1 ? 's' : ''} pour l'objectif de la semaine` : 'Objectif de la semaine atteint 💪'}</p>
+    </div>
+  </div>`;
+}
 /* Séances (hors repos) prévues un jour donné */
 function trainingFor(day) { return db.programs.filter(p => p.cat !== 'repos' && p.days.includes(day)); }
 function isRestDay(day) { return db.programs.some(p => p.cat === 'repos' && p.days.includes(day)); }
@@ -511,9 +554,11 @@ function doneDaysThisWeek() {
 function lastDoneOf(p) { return db.sessions.filter(s => s.programId === p.id).sort((a, b) => (a.start < b.start ? 1 : -1))[0]; }
 function todayCard(p) {
   const last = lastDoneOf(p), doneToday = last && sameDay(last.start, new Date());
-  return `<div class="card">
-    <div class="row-between"><h3>${esc(p.name)}</h3>${doneToday ? '<span class="pill ok">✓ Faite</span>' : ''}</div>
-    <p class="muted small">${last ? 'Dernière fois ' + fmtDate(last.start) : 'Jamais faite'}</p>
+  const cat = CATS[p.cat] || CATS.salle, n = p.exercises.length;
+  return `<div class="card poster">
+    <div class="row-between"><p class="p-eyebrow">${cat.e} ${cat.t}</p>${doneToday ? '<span class="pill ok">✓ Faite</span>' : ''}</div>
+    <h3>${esc(p.name)}</h3>
+    <p class="muted small">${n} exercice${n > 1 ? 's' : ''} · ${last ? 'dernière fois ' + fmtDate(last.start) : 'première fois'}</p>
     <ul class="plan">${p.exercises.map(ex => { const e = planFor(ex); return `<li><span>${esc(e.name)}</span><span class="plan-v">${planText(e)}</span></li>`; }).join('')}</ul>
     <button class="btn primary block" data-act="start" data-id="${p.id}">${doneToday ? 'Refaire' : 'Démarrer'}</button>
   </div>`;
@@ -532,7 +577,7 @@ function viewSession() {
 }
 function exCard(e, i) {
   const editing = ui.editIdx === i && !e.done, fb = e.done && ui.fbIdx === i;
-  let h = `<section class="card exc ${e.done ? 'done' : ''}">
+  let h = `<section class="card exc ${e.done ? 'done' : ''} ${ui.popIdx === i ? 'pop' : ''}">
     <div class="exc-top">
       <button class="tick" data-act="tick" data-i="${i}" aria-label="${e.done ? 'Décocher' : 'Valider'} ${esc(e.name)}">${ic('check')}</button>
       <div class="exc-body"><div class="exc-name">${esc(e.name)}</div><div class="exc-plan">${planText(e)}</div></div>
@@ -822,7 +867,10 @@ function viewProfile() {
       <div class="acc-s">Les comptes arrivent bientôt : tes données restent sur cet appareil.</div></div></div>`;
   }
   h += goalCard();
+  const th = db.settings.theme || 'auto';
   h += `<h2>Réglages</h2><div class="list">
+    <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Thème</span><span class="lrow-s">${th === 'auto' ? 'suit ton téléphone' : th === 'dark' ? 'toujours sombre' : 'toujours clair'}</span></span>
+      <div class="seg" role="group" aria-label="Thème">${[['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, v]) => `<button class="${th === k ? 'on' : ''}" data-act="setTheme" data-v="${k}">${v}</button>`).join('')}</div></div>
     <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Temps de repos</span><span class="lrow-s">par défaut, après chaque exercice</span></span>${miniStepper('rest', 15, 's')}</div>
     <div class="lrow static"><span class="lrow-main"><span class="lrow-t">Objectif par semaine</span><span class="lrow-s">nombre de séances</span></span>${miniStepper('weeklyGoal', 1)}</div>
   </div>
@@ -913,9 +961,12 @@ const actions = {
   tick(d) {
     const i = +d.i, e = db.active.exercises[i];
     e.done = !e.done; touchActive(); saveDb();
-    if (e.done) { ui.fbIdx = i; ui.editIdx = null; if (e.type !== 'cardio') startTimer(e.rest ?? db.settings.rest); }
-    else if (ui.fbIdx === i) ui.fbIdx = null;
-    render();
+    if (e.done) {
+      ui.fbIdx = i; ui.editIdx = null; ui.popIdx = i;
+      try { navigator.vibrate && navigator.vibrate(30); } catch (err) { /* */ }
+      if (e.type !== 'cardio') startTimer(e.rest ?? db.settings.rest);
+    } else if (ui.fbIdx === i) ui.fbIdx = null;
+    render(); ui.popIdx = null;
   },
   editEx(d) { ui.editIdx = ui.editIdx === +d.i ? null : +d.i; render(); },
   feel(d) { const e = db.active.exercises[+d.i]; e.feel = e.feel === d.v ? null : d.v; touchActive(); saveDb(); render(); },
@@ -943,7 +994,8 @@ const actions = {
     const sd = new Date(session.start);
     ui.cal = { y: sd.getFullYear(), m: sd.getMonth() }; ui.calSel = `${sd.getFullYear()}-${sd.getMonth()}-${sd.getDate()}`;
     ui.view = 'sessionDetail'; ui.sessionId = session.id; ui.tab = 'history';
-    render(); toTop(); toast('Séance enregistrée 💪');
+    render(); toTop();
+    if (newRecords(session).length) { confetti(); toast('🏆 Nouveau record !'); } else toast('Séance enregistrée 💪');
   },
   cancelSession() {
     if (!confirm('Abandonner cette séance ? Rien ne sera enregistré.')) return;
@@ -1084,6 +1136,7 @@ const actions = {
     markWelcomed(); ui.view = null; ui.tab = 'profile'; render(); toast('Compte créé ✅'); sync();
   },
   syncNow() { sync(); },
+  setTheme(d) { db.settings.theme = d.v; db.settingsU = now(); saveDb(); render(); },
   logout() {
     if (!confirm('Se déconnecter ? Tes données restent sur cet appareil.')) return;
     auth = null; storeAuth(); render();
@@ -1224,7 +1277,7 @@ let timerInt = null, audioCtx = null;
 function startTimer(sec) {
   if (!sec) return;
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { /* */ }
-  ui.timer = { end: now() + sec * 1000 };
+  ui.timer = { end: now() + sec * 1000, total: sec };
   $('#timerLabel').textContent = 'Repos';
   clearInterval(timerInt); timerInt = setInterval(tickTimer, 250); tickTimer();
 }
@@ -1239,6 +1292,8 @@ function tickTimer() {
     return;
   }
   el.hidden = false; $('#timerVal').textContent = mmss(left);
+  const arc = $('#timerArc');
+  if (arc) arc.style.strokeDashoffset = (94.25 * (1 - Math.min(1, left / Math.max(ui.timer.total, left)))).toFixed(2);
 }
 function stopTimer() { ui.timer = null; clearInterval(timerInt); $('#timer').hidden = true; }
 function alarm() {
@@ -1270,6 +1325,26 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('online', () => scheduleSync(200));
 setInterval(() => { if (document.visibilityState === 'visible') scheduleSync(0); }, 60000);
+
+/* ---------- Confettis ---------- */
+function confetti() {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'confetti';
+  const colors = ['#7c3aed', '#ec4899', '#f97316', '#facc15', '#34d399'];
+  for (let k = 0; k < 70; k++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[k % colors.length];
+    p.style.setProperty('--dx', (Math.random() * 160 - 80).toFixed(0) + 'px');
+    p.style.setProperty('--r', (Math.random() * 900 - 450).toFixed(0) + 'deg');
+    p.style.animationDuration = (1.6 + Math.random() * 1.4).toFixed(2) + 's';
+    p.style.animationDelay = (Math.random() * .35).toFixed(2) + 's';
+    wrap.appendChild(p);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(() => wrap.remove(), 3600);
+}
 
 /* ---------- Toast ---------- */
 let toastT = null;
