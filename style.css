@@ -581,6 +581,43 @@ main > *:nth-child(n+6) { animation-delay: .2s; }
 .acc .icon-btn { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); }
 .acc .icon-btn .ic { width: 20px; height: 20px; }
 
+/* Croix de fermeture ✕ (panneaux, fiches, éditeur, questionnaire) */
+.x-close {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; cursor: pointer;
+  display: grid; place-items: center; font-size: .95rem; line-height: 1;
+  background: var(--surface-2); color: var(--muted);
+}
+.x-close:active { transform: scale(.92); }
+.sheet { position: fixed; }
+.sheet-x { position: absolute; top: 12px; right: 14px; }
+.edit, .fb { position: relative; }
+.edit > .x-close, .fb > .x-close { position: absolute; top: 10px; right: 0; width: 32px; height: 32px; }
+.fb .fb-q { padding-right: 40px; }
+.edit { padding-top: 48px; }
+.top { position: relative; }
+.page-x { position: absolute; top: 0; right: 0; }
+.ob-top .ob-x { margin-left: auto; }
+
+/* Pastilles de séries */
+.setpills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0 56px; }
+.sp {
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--line); background: transparent; color: var(--muted);
+  font: 700 .9rem var(--font); display: grid; place-items: center; padding: 0;
+  transition: transform .15s, background .2s, border-color .2s;
+}
+.sp.next { border-color: var(--accent); color: var(--text); }
+.sp.on { background: var(--grad); border-color: transparent; color: var(--on-grad); }
+.sp:active { transform: scale(.9); }
+.sp-lab { font-size: .8rem; color: var(--muted); margin-left: 2px; }
+.tick.partial { border-color: var(--accent); color: var(--text); }
+.tick-n { font: 700 1rem var(--font); }
+.exc.done .setpills { opacity: .55; }
+
+/* Bouton chrono de séance (optionnel) */
+.chrono-btn { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 99px; padding: 4px 12px; min-height: 32px; font: 600 .82rem var(--font); cursor: pointer; }
+.chrono-btn.on { border-color: var(--accent); color: var(--text); }
+
 /* Séries par muscle */
 .mbars { display: grid; gap: 8px; margin: 12px 0 6px; }
 .mbar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 42px; align-items: center; gap: 10px; font-size: .85rem; }

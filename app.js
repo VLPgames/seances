@@ -10,7 +10,7 @@
 
 /* ---------- Utilitaires ---------- */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '5.7';
+const APP_VERSION = '5.8';
 const DB_KEY = 'seances.v1';      // même clé qu'en V1 : les données sont migrées
 const AUTH_KEY = 'seances.auth';
 const WELCOME_KEY = 'seances.welcomed';
@@ -40,23 +40,27 @@ const SALLE_TYPES =['Push', 'Pull', 'Leg day', 'Full body', 'Haut du corps', 'Ba
 /* Catalogue : groupe -> exercices. Suffixe « | pdc », « | pdc sec » ou « | cardio » ; par défaut muscu (charge en kg). */
 const CATALOG = {
   salle: {
-    'Pectoraux': ['Développé couché (barre)', 'Développé couché haltères', 'Développé couché à la Smith', 'Développé incliné', 'Développé décliné', 'Presse pectoraux (machine)', 'Pec deck / butterfly', 'Écarté poulie vis-à-vis', 'Dips | pdc'],
-    'Dos': ['Tirage vertical (poulie haute)', 'Tirage horizontal (poulie basse)', 'Rowing barre', 'Rowing haltère', 'Rowing machine', 'Pull-over poulie', 'Tractions | pdc', 'Soulevé de terre', 'Extension lombaires'],
-    'Épaules': ['Développé militaire', 'Développé épaules (machine)', 'Élévations latérales', 'Élévations latérales poulie', 'Oiseau (machine reverse fly)', 'Face pull', 'Shrugs'],
-    'Biceps': ['Curl barre', 'Curl haltères', 'Curl marteau', 'Curl pupitre', 'Curl poulie'],
-    'Triceps': ['Extension triceps poulie', 'Barre au front', 'Extension nuque haltère', 'Dips machine', 'Kickback'],
-    'Jambes': ['Squat', 'Squat à la Smith', 'Presse à cuisses', 'Hack squat', 'Fentes', 'Leg extension', 'Leg curl allongé', 'Leg curl assis', 'Soulevé de terre roumain', 'Hip thrust', 'Hip thrust (machine)', 'Adducteurs (machine)', 'Abducteurs (machine)', 'Mollets debout', 'Mollets assis'],
-    'Abdos': ['Crunch machine', 'Crunch poulie', 'Relevé de jambes | pdc', 'Gainage | pdc sec', 'Rotations russes | pdc'],
-    'Cardio': ['Tapis de course | cardio', 'Vélo | cardio', 'Rameur | cardio', 'Elliptique | cardio', 'Stairmaster | cardio'],
+    'Pectoraux': ['Développé couché (barre)', 'Développé couché haltères', 'Développé couché à la Smith', 'Développé incliné', 'Développé incliné haltères', 'Développé décliné', 'Presse pectoraux (machine)', 'Presse pectoraux inclinée (machine)', 'Pec deck / butterfly', 'Écarté poulie vis-à-vis', 'Écarté haltères', 'Écarté poulie basse', 'Dips | pdc', 'Dips assistés (machine)', 'Pompes | pdc'],
+    'Dos': ['Tirage vertical (poulie haute)', 'Tirage vertical prise serrée', 'Tirage vertical (machine)', 'Tirage horizontal (poulie basse)', 'Tirage horizontal (machine)', 'Rowing barre', 'Rowing haltère', 'Rowing machine', 'Rowing T-bar', 'Rowing unilatéral poulie', 'Pull-over poulie', 'Pull-down bras tendus', 'Tractions | pdc', 'Tractions assistées (machine)', 'Soulevé de terre', 'Extension lombaires', 'Good morning'],
+    'Épaules': ['Développé militaire', 'Développé épaules haltères', 'Développé Arnold', 'Développé épaules (machine)', 'Élévations latérales', 'Élévations latérales poulie', 'Élévations latérales (machine)', 'Élévations frontales', 'Oiseau haltères', 'Oiseau (machine reverse fly)', 'Face pull', 'Rowing menton', 'Shrugs'],
+    'Biceps': ['Curl barre', 'Curl barre EZ', 'Curl haltères', 'Curl marteau', 'Curl incliné', 'Curl concentré', 'Curl pupitre', 'Curl poulie', 'Curl (machine)'],
+    'Triceps': ['Extension triceps poulie', 'Extension triceps corde', 'Extension triceps unilatérale poulie', 'Barre au front', 'Extension nuque haltère', 'Développé couché prise serrée', 'Dips machine', 'Dips entre bancs | pdc', 'Triceps (machine)', 'Kickback'],
+    'Jambes': ['Squat', 'Squat à la Smith', 'Front squat', 'Goblet squat', 'Presse à cuisses', 'Hack squat', 'Fentes', 'Fentes marchées', 'Fentes bulgares', 'Step-up', 'Leg extension', 'Leg curl allongé', 'Leg curl assis', 'Soulevé de terre roumain', 'Soulevé de terre sumo', 'Adducteurs (machine)', 'Mollets debout', 'Mollets assis', 'Mollets à la presse'],
+    'Fessiers': ['Hip thrust', 'Hip thrust (machine)', 'Abducteurs (machine)', 'Kickback fessier poulie', 'Kickback fessier (machine)', 'Pont fessier barre'],
+    'Abdos': ['Crunch machine', 'Crunch poulie', 'Rotation buste (machine)', 'Relevé de jambes | pdc', 'Relevé de jambes suspendu | pdc', 'Roue abdominale | pdc', 'Gainage | pdc sec', 'Gainage latéral | pdc sec', 'Rotations russes | pdc', 'Hollow hold | pdc sec'],
+    'Fonctionnel': ['Kettlebell swing', 'Thruster', 'Farmer walk', 'Wall ball', 'Sled push', 'Box jump | pdc', 'Burpees | pdc', 'Battle rope | pdc sec', 'Corde à sauter | pdc sec'],
+    'Cardio': ['Tapis de course | cardio', 'Vélo | cardio', 'Vélo assis | cardio', 'Air bike | cardio', 'Rameur | cardio', 'Elliptique | cardio', 'Stairmaster | cardio', 'SkiErg | cardio'],
   },
   maison: {
-    'Haut du corps': ['Pompes | pdc', 'Pompes diamant | pdc', 'Pompes inclinées | pdc', 'Pike push-up | pdc', 'Dips sur chaise | pdc', 'Tractions (barre de porte) | pdc'],
-    'Bas du corps': ['Squats | pdc', 'Fentes | pdc', 'Squats sautés | pdc', 'Pont fessier | pdc', 'Chaise | pdc sec', 'Mollets | pdc'],
-    'Abdos / gainage': ['Gainage | pdc sec', 'Gainage latéral | pdc sec', 'Crunchs | pdc', 'Relevés de jambes | pdc', 'Mountain climbers | pdc sec', 'Russian twist | pdc'],
-    'Cardio': ['Burpees | pdc', 'Jumping jacks | pdc sec', 'Corde à sauter | pdc sec', 'Montées de genoux | pdc sec'],
+    'Haut du corps': ['Pompes | pdc', 'Pompes larges | pdc', 'Pompes diamant | pdc', 'Pompes inclinées | pdc', 'Pompes déclinées | pdc', 'Pike push-up | pdc', 'Dips sur chaise | pdc', 'Tractions (barre de porte) | pdc', 'Australian row (sous une table) | pdc'],
+    'Bas du corps': ['Squats | pdc', 'Squats sautés | pdc', 'Fentes | pdc', 'Fentes sautées | pdc', 'Fentes bulgares (chaise) | pdc', 'Pont fessier | pdc', 'Pont fessier une jambe | pdc', 'Chaise | pdc sec', 'Mollets | pdc'],
+    'Abdos / gainage': ['Gainage | pdc sec', 'Gainage latéral | pdc sec', 'Planche dynamique | pdc', 'Crunchs | pdc', 'Crunch vélo | pdc', 'Relevés de jambes | pdc', 'Mountain climbers | pdc sec', 'Russian twist | pdc', 'Superman | pdc sec', 'Hollow hold | pdc sec'],
+    'Haltères / élastiques': ['Curl haltères', 'Rowing haltère', 'Développé haltères au sol', 'Développé épaules haltères', 'Goblet squat', 'Élévations latérales', 'Curl élastique | pdc', 'Tirage élastique | pdc', 'Élévations latérales élastique | pdc'],
+    'Cardio': ['Burpees | pdc', 'Jumping jacks | pdc sec', 'Corde à sauter | pdc sec', 'Montées de genoux | pdc sec', 'Shadow boxing | pdc sec'],
   },
   exterieur: {
-    'Activités': ['Course | cardio', 'Fractionné | cardio', 'Vélo | cardio', 'Marche rapide | cardio', 'Randonnée | cardio', 'Natation | cardio'],
+    'Activités': ['Course | cardio', 'Fractionné | cardio', 'Sprints | cardio', 'Trail | cardio', 'Vélo | cardio', 'VTT | cardio', 'Marche rapide | cardio', 'Randonnée | cardio', 'Natation | cardio', 'Escaliers | cardio', 'Roller | cardio'],
+    'Street workout': ['Tractions | pdc', 'Dips | pdc', 'Pompes | pdc', 'Muscle-up | pdc', 'Relevé de jambes suspendu | pdc', 'Squats | pdc'],
   },
 };
 /* ---------- Profil sportif ---------- */
@@ -109,8 +113,8 @@ function gymMachines() {
 }
 /* Groupes mis en avant selon le type de séance salle */
 const FOCUS = {
-  'Push': ['Pectoraux', 'Épaules', 'Triceps'], 'Pull': ['Dos', 'Biceps'], 'Leg day': ['Jambes', 'Abdos'],
-  'Haut du corps': ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps'], 'Bas du corps': ['Jambes', 'Abdos'],
+  'Push': ['Pectoraux', 'Épaules', 'Triceps'], 'Pull': ['Dos', 'Biceps'], 'Leg day': ['Jambes', 'Fessiers', 'Abdos'],
+  'Haut du corps': ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps'], 'Bas du corps': ['Jambes', 'Fessiers', 'Abdos'],
 };
 function parseItem(s) {
   const [name, tag = ''] = s.split(' | ');
@@ -614,10 +618,10 @@ function weeklyGoal() {
 /* Groupe musculaire d'un exercice (d'après le catalogue) */
 const GROUP_OF = (() => {
   const m = new Map();
-  for (const cat of Object.values(CATALOG)) for (const [g, items] of Object.entries(cat)) for (const s of items) m.set(nkey(parseItem(s).name), g);
+  for (const cat of Object.values(CATALOG)) for (const [g, items] of Object.entries(cat)) for (const s of items) { const k = nkey(parseItem(s).name); if (!m.has(k)) m.set(k, g); } // la salle d'abord (groupes musculaires précis)
   return m;
 })();
-function musclesOf(p) { return [...new Set(p.exercises.map(e => GROUP_OF.get(nkey(e.name))).filter(g => g && g !== 'Activités'))]; }
+function musclesOf(p) { return [...new Set(p.exercises.map(e => GROUP_OF.get(nkey(e.name))).filter(g => g && !['Activités', 'Cardio', 'Street workout'].includes(g)))]; }
 /* Durée estimée : ~40 s par série + repos ; cardio = durée prévue */
 function estMinutes(p) {
   let s = 0;
@@ -689,8 +693,11 @@ function todayCard(p) {
 /* ----- Séance en cours ----- */
 function viewSession() {
   const a = db.active, n = a.exercises.filter(e => e.done).length, tot = a.exercises.length;
+  const chronoOn = !!db.settings.chrono;
   let h = `<header class="top"><button class="back" data-act="home">‹ Accueil</button><h1>${esc(a.programName)}</h1>
-    <p class="muted small row-between"><span>⏱ <span class="chrono" id="chrono">${chronoText()}</span></span><span>${n} / ${tot} exercice${tot > 1 ? 's' : ''}</span></p>
+    <p class="muted small row-between">
+      <button class="chrono-btn ${chronoOn ? 'on' : ''}" data-act="toggleChrono" aria-pressed="${chronoOn}">⏱ ${chronoOn ? `<span class="chrono" id="chrono">${chronoText()}</span>` : 'Chrono'}</button>
+      <span>${n} / ${tot} exercice${tot > 1 ? 's' : ''}</span></p>
     <div class="bar slim"><span style="width:${tot ? n / tot * 100 : 0}%"></span></div></header>`;
   h += a.exercises.map(exCard).join('');
   h += `<button class="btn ghost block" data-act="addExSession">+ Ajouter un exercice</button>`;
@@ -699,19 +706,27 @@ function viewSession() {
 }
 function exCard(e, i) {
   const editing = ui.editIdx === i && !e.done, fb = e.done && ui.fbIdx === i;
+  const perSet = e.type !== 'cardio', n = Math.max(1, e.sets || 1), sd = Math.min(e.setsDone || 0, n);
   let h = `<section class="card exc ${e.done ? 'done' : ''} ${ui.popIdx === i ? 'pop' : ''}">
     <div class="exc-top">
-      <button class="tick" data-act="tick" data-i="${i}" aria-label="${e.done ? 'Décocher' : 'Valider'} ${esc(e.name)}">${ic('check')}</button>
+      <button class="tick ${!e.done && sd ? 'partial' : ''}" data-act="tick" data-i="${i}" aria-label="${e.done ? 'Décocher' : perSet ? `Valider la série ${sd + 1}` : 'Valider'} ${esc(e.name)}">${!e.done && perSet && sd ? `<span class="tick-n">${sd}</span>` : ic('check')}</button>
       <div class="exc-body"><div class="exc-name">${esc(e.name)}</div><div class="exc-plan">${planText(e)}</div></div>
       ${e.done ? '' : `<button class="link" data-act="editEx" data-i="${i}">${editing ? 'OK' : 'Modifier'}</button>`}
     </div>`;
+  // Une pastille par série : on coche au fur et à mesure, le repos se lance entre les séries
+  if (perSet) {
+    h += `<div class="setpills" role="group" aria-label="Séries">${Array.from({ length: n }, (_, k) =>
+      `<button class="sp ${k < sd || e.done ? 'on' : ''} ${!e.done && k === sd ? 'next' : ''}" data-act="setTap" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}${k < sd || e.done ? ' faite' : ''}">${k < sd || e.done ? '✓' : k + 1}</button>`).join('')}
+      <span class="sp-lab">${e.done ? n : sd}/${n} série${n > 1 ? 's' : ''}</span></div>`;
+  }
   if (!e.done) {
     if (e.hint) h += `<p class="hint">${esc(e.hint)}</p>`;
     if (e.lastNote) h += `<p class="hint note">📝 ${esc(e.lastNote)}</p>`;
   }
-  if (editing) h += `<div class="edit">${steppersFor(e, 'act', i)}</div>`;
+  if (editing) h += `<div class="edit"><button class="x-close" data-act="editEx" data-i="${i}" aria-label="Fermer">✕</button>${steppersFor(e, 'act', i)}</div>`;
   if (fb) {
     h += `<div class="fb">
+      <button class="x-close" data-act="fbClose" aria-label="Fermer">✕</button>
       <p class="fb-q">Comment c'était ?</p>
       <div class="chips">${Object.entries(FEEL).map(([k, v]) => `<button class="chip ${e.feel === k ? 'on' : ''}" data-act="feel" data-i="${i}" data-v="${k}">${v.e} ${v.t}</button>`).join('')}</div>
       <p class="explain">${feelEffect(e)}</p>
@@ -784,7 +799,7 @@ function viewOnboard() {
   let h = `<div class="ob">
     <div class="ob-top">
       ${i > 0 ? `<button class="back" data-act="obBack">‹ Retour</button>` : '<span></span>'}
-      <button class="btn text" data-act="obSkip">${db.profile && db.profile.done ? 'Fermer' : 'Plus tard'}</button>
+      <button class="x-close ob-x" data-act="obSkip" aria-label="${db.profile && db.profile.done ? 'Fermer' : 'Plus tard'}">✕</button>
     </div>
     <div class="ob-dots">${steps.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>`;
   if (step === 'hello') {
@@ -823,7 +838,7 @@ function viewOnboard() {
     const g = GOALS[d.goal], l = LEVELS[d.level];
     const rows = [
       ['Séries × reps proposées', `${l ? l.sets : 4} × ${g ? g.reps : 10}`, `${l ? l.t : 'niveau non renseigné'} · ${g ? g.t.toLowerCase() : 'objectif non renseigné'}`],
-      ['Repos entre les exercices', `${g ? g.rest : db.settings.rest} s`, g ? `adapté à « ${g.t.toLowerCase()} »` : 'valeur actuelle'],
+      ['Repos entre les séries', `${g ? g.rest : db.settings.rest} s`, g ? `adapté à « ${g.t.toLowerCase()} »` : 'valeur actuelle'],
       ['Objectif de la semaine', `${d.days || 3} séance${(d.days || 3) > 1 ? 's' : ''}`, 'remplace par tes jours programmés quand ta semaine est remplie'],
     ];
     if (['salle', 'mixte'].includes(d.place) && d.gym && d.gym !== 'none') rows.push(['Machines', d.gym === 'autre' ? (d.gymName || 'Ta salle') : GYMS[d.gym].t, 'proposées en premier — ajustables dans Profil › Ma salle']);
@@ -879,7 +894,7 @@ function catalogFor(p) {
 }
 function viewEditor() {
   const p = ui.draft, isNew = !db.programs.some(x => x.id === p.id), cat = CATS[p.cat];
-  let h = `<header class="top"><button class="back" data-act="cancelEdit">‹ Annuler</button>
+  let h = `<header class="top"><button class="x-close page-x" data-act="cancelEdit" aria-label="Fermer sans enregistrer">✕</button><button class="back" data-act="cancelEdit">‹ Annuler</button>
     <p class="eyebrow">${cat.e} ${cat.t}</p><h1>${p.cat === 'repos' ? 'Jours de repos' : isNew ? 'Nouvelle séance' : 'Modifier'}</h1></header><div class="card">`;
   if (p.cat === 'salle') {
     h += `<label class="lbl">Type de séance</label><div class="chips tight">${SALLE_TYPES.map(t => `<button class="chip ${p.name.trim() === t ? 'on' : ''}" data-act="pickType" data-v="${t}">${t}</button>`).join('')}</div>`;
@@ -933,7 +948,7 @@ function viewSheet() {
 function viewCatSheet() {
   const day = ui.sheet.day, rest = day != null && isRestDay(day);
   return `<div class="sheet-bg" data-act="closeSheet"></div>
-  <div class="sheet" role="dialog" aria-label="Programmer"><div class="grab"></div>
+  <div class="sheet" role="dialog" aria-label="Programmer"><div class="grab"></div><button class="x-close sheet-x" data-act="closeSheet" aria-label="Fermer">✕</button>
     <h3>${day != null ? 'Le ' + JOURS[day].toLowerCase() + ', ' : ''}c'est…</h3>
     <div class="list">${Object.entries(CATS).map(([k, c]) => listRow({ act: 'pickCat', attrs: `data-v="${k}"`, title: `${c.e} ${c.t}`, sub: c.s })).join('')}
     ${rest ? listRow({ act: 'clearDay', title: 'Remettre à programmer', cls: 'danger' }) : ''}</div>
@@ -943,7 +958,7 @@ function viewExSheet() {
   const s = ui.sheet, e = s.ex, isNew = s.index < 0;
   return `<div class="sheet-bg" data-act="closeSheet"></div>
   <div class="sheet" role="dialog" aria-label="Exercice">
-    <div class="grab"></div>
+    <div class="grab"></div><button class="x-close sheet-x" data-act="closeSheet" aria-label="Fermer">✕</button>
     ${s.fromCatalog ? `<h3>${esc(e.name)}</h3><p class="muted small">${e.type === 'cardio' ? 'Indique ta distance et ta durée habituelles.' : e.type === 'muscu' ? 'Indique le poids que tu fais, tes séries et tes reps.' : 'Indique tes séries et tes reps.'}</p>` : `
     <h3>${isNew ? 'Nouvel exercice' : 'Exercice'}</h3>
     <input class="txt big" data-sheet="name" value="${esc(e.name)}" placeholder="Nom (ex. Tirage poulie haute)" list="exNames" autocomplete="off">
@@ -1092,7 +1107,7 @@ function musclesCard() {
       counts.set(g, (counts.get(g) || 0) + (e.sets || 0));
     }
   }
-  const main = ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Jambes', 'Abdos'];
+  const main = ['Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Jambes', 'Fessiers', 'Abdos'];
   const groups = [...new Set([...main, ...counts.keys()])];
   const target = 10;
   return `<div class="card"><div class="row-between"><strong>Muscles cette semaine</strong><span class="muted small">séries</span></div>
@@ -1200,7 +1215,8 @@ function viewPage() {
   if (p === 'training') {
     const auto = db.settings.goalAuto !== false;
     return head('Entraînement') + `<div class="list">
-      ${row('Temps de repos', 'par défaut, après chaque exercice', miniStepper('rest', 15, 's'))}
+      ${row('Temps de repos', 'par défaut, entre chaque série', miniStepper('rest', 15, 's'))}
+      ${row('Chrono de séance', 'durée affichée pendant la séance', segBtns('setChrono', db.settings.chrono ? 'on' : 'off', [['off', 'Non'], ['on', 'Oui']]))}
       ${row('Objectif par semaine', auto ? `${weeklyGoal()} = tes jours d'entraînement programmés` : 'choisi par toi', segBtns('setGoalMode', auto ? 'auto' : 'manual', [['auto', 'Auto'], ['manual', 'Manuel']]))}
       ${auto ? '' : row('Séances par semaine', '', miniStepper('weeklyGoal', 1))}
     </div>`;
@@ -1300,7 +1316,8 @@ function setDay(p, day) {
   p.u = now();
 }
 function newEx() { return { id: uid(), name: '', type: 'muscu', unit: 'reps', sets: 3, reps: 10, kg: null, km: null, min: null, rest: null }; }
-function cleanEntry(e) { const { hint, lastNote, done, ...rest } = e; return rest; }
+function cleanEntry(e) { const { hint, lastNote, done, setsDone, ...rest } = e; return rest; }
+function buzz() { try { navigator.vibrate && navigator.vibrate(30); } catch (err) { /* */ } }
 /* Écran affiché après le clic sur le lien de confirmation de l'email */
 function viewConfirmed() {
   return `<div class="auth confirmed">
@@ -1361,16 +1378,40 @@ const actions = {
     ui.fbIdx = null; ui.editIdx = null;
     saveDb(); ui.view = 'session'; render(); keepAwake(true); toTop();
   },
+  /* Gros bouton ✓ : cardio = fait/pas fait ; muscu / poids du corps = série suivante */
   tick(d) {
     const i = +d.i, e = db.active.exercises[i];
-    e.done = !e.done; touchActive(); saveDb();
-    if (e.done) {
-      ui.fbIdx = i; ui.editIdx = null; ui.popIdx = i;
-      try { navigator.vibrate && navigator.vibrate(30); } catch (err) { /* */ }
-      if (e.type !== 'cardio') startTimer(e.rest ?? db.settings.rest);
-    } else if (ui.fbIdx === i) ui.fbIdx = null;
-    render(); ui.popIdx = null;
+    if (e.type === 'cardio') {
+      e.done = !e.done; touchActive(); saveDb();
+      if (e.done) { ui.fbIdx = i; ui.editIdx = null; ui.popIdx = i; buzz(); } else if (ui.fbIdx === i) ui.fbIdx = null;
+      render(); ui.popIdx = null; return;
+    }
+    if (e.done) { // décocher l'exercice : on revient à la dernière série
+      e.done = false; e.setsDone = Math.max(0, (e.sets || 1) - 1);
+      if (ui.fbIdx === i) ui.fbIdx = null;
+      touchActive(); saveDb(); render(); return;
+    }
+    actions.setTap({ i, k: e.setsDone || 0 });
   },
+  /* Pastille de série : coche jusqu'à cette série (ou décoche si elle l'était déjà) */
+  setTap(d) {
+    const i = +d.i, k = +d.k, e = db.active.exercises[i], n = Math.max(1, e.sets || 1);
+    const sd = e.done ? n : (e.setsDone || 0);
+    if (k < sd) { // décocher à partir de cette série
+      e.setsDone = k; e.done = false;
+      if (ui.fbIdx === i) ui.fbIdx = null;
+      stopTimer(); touchActive(); saveDb(); render(); return;
+    }
+    e.setsDone = Math.min(n, k + 1); ui.editIdx = null; buzz();
+    if (e.setsDone >= n) { // dernière série : exercice terminé, pas de repos
+      e.done = true; ui.fbIdx = i; ui.popIdx = i; stopTimer();
+    } else {
+      startTimer(e.rest ?? db.settings.rest); // repos entre les séries
+    }
+    touchActive(); saveDb(); render(); ui.popIdx = null;
+  },
+  setChrono(d) { db.settings.chrono = d.v === 'on'; db.settingsU = now(); saveDb(); render(); },
+  toggleChrono() { db.settings.chrono = !db.settings.chrono; db.settingsU = now(); saveDb(); render(); },
   editEx(d) { ui.editIdx = ui.editIdx === +d.i ? null : +d.i; render(); },
   feel(d) { const e = db.active.exercises[+d.i]; e.feel = e.feel === d.v ? null : d.v; touchActive(); saveDb(); render(); },
   fbOpen(d) { ui.fbIdx = +d.i; render(); },
@@ -1384,13 +1425,16 @@ const actions = {
   },
   addExSession() { ui.sheet = { mode: 'session', index: -1, ex: newEx() }; render(); },
   finishSession() {
-    const a = db.active, done = a.exercises.filter(e => e.done);
+    const a = db.active;
+    // Exercices terminés + exercices commencés (on garde les séries réellement faites)
+    const done = a.exercises.filter(e => e.done || (e.type !== 'cardio' && (e.setsDone || 0) > 0))
+      .map(e => (e.done ? e : { ...e, sets: e.setsDone, done: true }));
     if (!done.length) {
-      if (!confirm('Aucun exercice coché. Quitter sans rien enregistrer ?')) return;
+      if (!confirm('Aucune série cochée. Quitter sans rien enregistrer ?')) return;
       clearActive(); saveDb(); actions.home(); return;
     }
     const left = a.exercises.length - done.length;
-    if (left && !confirm(`${left} exercice(s) non coché(s) ne seront pas enregistrés. Terminer quand même ?`)) return;
+    if (left && !confirm(`${left} exercice(s) pas commencé(s) ne seront pas enregistrés. Terminer quand même ?`)) return;
     const session = { id: a.id, programId: a.programId, programName: a.programName, start: a.start, end: new Date().toISOString(), u: now(), exercises: done.map(cleanEntry) };
     db.sessions.push(session);
     clearActive(); saveDb();
